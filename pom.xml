@@ -7,8 +7,11 @@
     <groupId>org.example</groupId>
     <artifactId>api_guard</artifactId>
     <version>1.0-SNAPSHOT</version>
-    <name>micro_service_map</name>
+    <name>API Guard</name>
 
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -66,7 +69,7 @@
                         <!-- Default configuration for running with: mvn clean javafx:run -->
                         <id>default-cli</id>
                         <configuration>
-                            <mainClass>org.example.micro_service_map/org.example.micro_service_map.ApiGuardApplication
+                            <mainClass>org.mindpower.api_guard/org.mindpower.api_guard.ApiGuardApplication
                             </mainClass>
                             <launcher>app</launcher>
                             <jlinkZipName>app</jlinkZipName>

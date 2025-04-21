@@ -1,4 +1,4 @@
-package org.example.micro_service_map;
+package org.mindpower.api_guard;
 
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;

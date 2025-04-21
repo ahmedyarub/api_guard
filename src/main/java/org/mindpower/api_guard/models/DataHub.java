@@ -1,4 +1,4 @@
-package org.example.micro_service_map.models;
+package org.mindpower.api_guard.models;
 
 import lombok.Data;
 import lombok.ToString;

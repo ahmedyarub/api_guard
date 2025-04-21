@@ -1,4 +1,4 @@
-module org.example.micro_service_map {
+module org.mindpower.api_guard {
     requires javafx.controls;
     requires javafx.fxml;
     requires com.github.javaparser.core;
@@ -8,8 +8,8 @@ module org.example.micro_service_map {
     requires java.desktop;
 
 
-    opens org.example.micro_service_map to javafx.fxml;
-    exports org.example.micro_service_map;
-    exports org.example.micro_service_map.models;
-    opens org.example.micro_service_map.models to javafx.fxml;
+    opens org.mindpower.api_guard to javafx.fxml;
+    exports org.mindpower.api_guard;
+    exports org.mindpower.api_guard.models;
+    opens org.mindpower.api_guard.models to javafx.fxml;
 }

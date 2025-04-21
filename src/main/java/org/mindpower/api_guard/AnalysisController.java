@@ -1,4 +1,4 @@
-package org.example.micro_service_map;
+package org.mindpower.api_guard;
 
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.body.MethodDeclaration;
@@ -19,9 +19,9 @@ import javafx.stage.Stage;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
-import org.example.micro_service_map.models.DataHub;
-import org.example.micro_service_map.models.Endpoint;
-import org.example.micro_service_map.models.RestClient;
+import org.mindpower.api_guard.models.DataHub;
+import org.mindpower.api_guard.models.Endpoint;
+import org.mindpower.api_guard.models.RestClient;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilderFactory;
