@@ -1,0 +1,80 @@
+.graph {
+    -fx-background-color: #F4FFFB;
+
+}
+
+.vertex {
+    -fx-stroke-width: 6;
+    -fx-stroke: #61B5F1;
+    -fx-stroke-type: inside;
+    -fx-fill: #B1DFF7;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 8, 0.2, 0, 4);
+}
+
+.vertex:hover {
+
+    -fx-stroke-width: 4;
+}
+
+.vertex-label {
+    -fx-font: bold 16pt "sans-serif";
+    -fx-padding: 5px;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 8, 0.2, 0, 4);
+}
+
+.vertex-label:hover {
+    -fx-background-color: white;
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-border-color: black;
+}
+
+.edge {
+    -fx-stroke-width: 4;
+    -fx-stroke: #FF6D66;
+    -fx-stroke-dash-array: 2 5 2 5;
+    -fx-fill: transparent;
+    -fx-stroke-line-cap: round;
+    -fx-opacity: 0.8;
+}
+
+.edge:hover {
+    -fx-stroke-width: 3;
+}
+
+.edge-label {
+    -fx-font: normal 10pt "sans-serif";
+    -fx-fill: white;
+    -fx-background-color: red;
+    -fx-background-radius: 0;
+    -fx-border-color: black;
+    -fx-padding: 2px;
+}
+
+.edge-label:hover {
+    -fx-font: bold 10pt "sans-serif";
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+}
+
+
+.arrow {
+    -fx-stroke-dash-array: none;
+}
+
+
+.myVertex {
+    -fx-stroke-width: 8;
+    -fx-stroke: green;
+    -fx-stroke-type: inside;
+    -fx-fill: yellowgreen;
+    -fx-opacity: 0.5;
+}
+
+
+.myEdge {
+    -fx-stroke-width: 4;
+    -fx-stroke: red;
+    -fx-opacity: 1;
+    -fx-fill: transparent;
+}
