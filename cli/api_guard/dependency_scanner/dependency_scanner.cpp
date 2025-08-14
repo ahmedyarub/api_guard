@@ -65,12 +65,14 @@ void DependencyScanner::addEdge(const Consumer& cons, const Producer& prod)
 
 Graph DependencyScanner::scanDependencies(const std::string& projects_root)
 {
+    auto javaExePath = getExecutablePath("java");
+
     auto result = runProcess(
-        R"(E:\Users\FiFo\.jdks\corretto-21.0.7\bin\java.exe)", {
-            "--module-path", "e:/javafx-sdk-21.0.8/lib",
+        javaExePath, {
+            "--module-path", javaFxPath + "/lib",
             "--add-modules", "javafx.controls",
             "-jar",
-            R"(E:\java\api_guard\dependency_analyzers\java\api_guard\target\api_guard-1.0-SNAPSHOT.jar)",
+            javaAnalyzerPath,
             "--cli",
             "--path=" + projects_root
         }

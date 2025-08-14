@@ -1,4 +1,5 @@
 #include <iostream>
+#include <boost/dll.hpp>
 #include <boost/graph/topological_sort.hpp>
 #include "cxxopts.hpp"
 #include <deque>
@@ -18,11 +19,17 @@ int main(const int argc, char* argv[])
     options.add_options()
         ("projects_path", "Root path of projects", cxxopts::value<std::string>())
         ("dbs_path", "Root path of databases", cxxopts::value<std::string>())
+        ("javafx_path", "Root path of JavaFX", cxxopts::value<std::string>())
+        ("java_analyzer_path", "Path to the .jar file used to analyze the dependencies of Java projects",
+         cxxopts::value<std::string>())
         ("h,help", "Print usage");
 
     const auto argsResult = options.parse(argc, argv);
 
-    if (argsResult.count("help") || !argsResult.count("projects_path") || !argsResult.count("dbs_path"))
+    if (argsResult.count("help") ||
+        !argsResult.count("projects_path") ||
+        !argsResult.count("dbs_path") ||
+        !argsResult.count("javafx_path"))
     {
         std::cout << options.help() << std::endl;
 
@@ -31,11 +38,22 @@ int main(const int argc, char* argv[])
 
     const auto projects_root = argsResult["projects_path"].as<std::string>();
     const auto dbs_root = argsResult["dbs_path"].as<std::string>();
+    const auto javafx_path = argsResult["javafx_path"].as<std::string>();
+    std::string java_analyzer_path;
+
+    if (argsResult.count("java_analyzer_path"))
+    {
+        java_analyzer_path = argsResult["java_analyzer_path"].as<std::string>();
+    }
+    else
+    {
+        java_analyzer_path = dll::program_location().parent_path().generic_string() + "/analysers/java/api_guard.jar";
+    }
 
     auto codeqlExePath = getExecutablePath("codeql");
     auto codeqlRoot = codeqlExePath.parent_path();
 
-    DependencyScanner scanner;
+    DependencyScanner scanner(java_analyzer_path, javafx_path);
     std::cout << "Scanning root folder for projects" << std::endl;
     auto g = scanner.scanDependencies(projects_root);
 
