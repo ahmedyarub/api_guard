@@ -1,0 +1,11 @@
+{
+  "name": "api-guard",
+  "version-string": "0.0.1",
+  "dependencies": [
+    "boost-dll",
+    "boost-graph",
+    "boost-process",
+    "cxxopts",
+    "nlohmann-json"
+  ]
+}
