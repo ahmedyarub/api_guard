@@ -20,3 +20,18 @@ target_link_libraries(api_guard PRIVATE nlohmann_json::nlohmann_json)
 
 target_compile_definitions(api_guard PRIVATE WIN32_LEAN_AND_MEAN)
 target_compile_definitions(api_guard PRIVATE _WIN32_WINNT=0x0601)
+
+install(TARGETS api_guard DESTINATION bin)
+
+set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
+set(X_VCPKG_APPLOCAL_DEPS_INSTALL ON)
+
+set(CPACK_PACKAGE_NAME "api_guard")
+set(CPACK_PACKAGE_VENDOR "Mind Power")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "API Static Analyzer")
+set(CPACK_PACKAGE_VERSION "0.0.1")
+set(CPACK_PACKAGE_CONTACT "ahmedyarubhani@gmail.com")
+
+set(CPACK_GENERATOR "ZIP")
+
+include(CPack)
