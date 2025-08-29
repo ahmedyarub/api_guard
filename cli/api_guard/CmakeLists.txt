@@ -21,7 +21,24 @@ target_link_libraries(api_guard PRIVATE nlohmann_json::nlohmann_json)
 target_compile_definitions(api_guard PRIVATE WIN32_LEAN_AND_MEAN)
 target_compile_definitions(api_guard PRIVATE _WIN32_WINNT=0x0601)
 
-install(TARGETS api_guard DESTINATION bin)
+add_custom_command(
+        OUTPUT "${CMAKE_SOURCE_DIR}/../../dependency_analyzers/java/api_guard/target/api_guard-1.0-SNAPSHOT.jar"
+        COMMAND mvn -f "${CMAKE_SOURCE_DIR}/../../dependency_analyzers/java/api_guard/pom.xml" package
+        WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/../../dependency_analyzers/java/api_guard"
+        COMMENT "Building Java Analyzer"
+)
+
+add_custom_target(build_analyzer_jar ALL
+        DEPENDS "${CMAKE_SOURCE_DIR}/../../dependency_analyzers/java/api_guard/target/api_guard-1.0-SNAPSHOT.jar"
+)
+
+install(FILES
+        "${CMAKE_SOURCE_DIR}/../../dependency_analyzers/java/api_guard/target/api_guard-1.0-SNAPSHOT.jar"
+        DESTINATION analysers/java
+        RENAME java_analyser.jar
+)
+
+install(TARGETS api_guard DESTINATION .)
 
 set(CMAKE_POLICY_DEFAULT_CMP0077 NEW)
 set(X_VCPKG_APPLOCAL_DEPS_INSTALL ON)
