@@ -47,7 +47,8 @@ int main(const int argc, char* argv[])
     }
     else
     {
-        java_analyzer_path = dll::program_location().parent_path().generic_string() + "/analysers/java/api_guard.jar";
+        java_analyzer_path =
+            dll::program_location().parent_path().generic_string() + "/analysers/java/java_analyser.jar";
     }
 
     auto codeqlExePath = getExecutablePath("codeql");
