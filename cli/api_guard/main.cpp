@@ -1,5 +1,6 @@
 #include <iostream>
 #include <boost/dll.hpp>
+#include <boost/process.hpp>
 #include <boost/graph/topological_sort.hpp>
 #include "cxxopts.hpp"
 #include <deque>
@@ -86,18 +87,17 @@ int main(const int argc, char* argv[])
                        verbosityFlag,
                        "--",
                        dbDir
-                   });
+                   }, {});
 
         std::cout << "Parsing code" << std::endl;
-
-        _putenv("CODEQL_EXTRACTOR_JAVA_OPTION_TRAP_COMPRESSION=NONE");
 
         runProcess(codeqlExePath, {
                        "database", "trace-command",
                        "--working-dir=" + dh.rootFolder, "--index-traceless-dbs", "--no-db-cluster",
                        verbosityFlag, "--", dbDir,
                        codeqlRoot.generic_string() + "/java/tools/autobuild.cmd"
-                   });
+                   },
+                   {"CODEQL_EXTRACTOR_JAVA_OPTION_TRAP_COMPRESSION=NONE"});
 
         std::cout << "Adapting Trap files" << std::endl;
         adaptTrapFiles(g, dep, dbs_root);
@@ -110,7 +110,8 @@ int main(const int argc, char* argv[])
                        verbosityFlag,
                        "--",
                        dbs_root + "/" + dh.artifactId
-                   });
+                   },
+                   {"CODEQL_EXTRACTOR_JAVA_OPTION_TRAP_COMPRESSION=NONE"});
 
         if (const std::string result_file = dbs_root + "/" + dh.artifactId + "/codeql_result.sarif";
             fs::exists(result_file))
@@ -130,7 +131,7 @@ int main(const int argc, char* argv[])
                        "--no-sarif-minify",
                        "--sarif-add-snippets",
                        verbosityFlag,
-                   });
+                   }, {});
     }
 
     return 0;
