@@ -75,7 +75,7 @@ Graph DependencyScanner::scanDependencies(const std::string& projects_root)
             javaAnalyzerPath,
             "--cli",
             "--path=" + projects_root
-        }
+        }, {}
     );
 
     try

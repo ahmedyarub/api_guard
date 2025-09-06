@@ -7,7 +7,7 @@
 namespace bp = boost::process;
 namespace asio = boost::asio;
 
-std::string runProcess(const boost::process::v2::filesystem::path& command, const std::vector<std::string>& args)
+std::string runProcess(const boost::process::v2::filesystem::path& command, const std::vector<std::string>& args, const std::vector<std::string>& envVariables)
 {
     char buffer[10240] = {};
 
@@ -15,9 +15,12 @@ std::string runProcess(const boost::process::v2::filesystem::path& command, cons
         try
         {
             asio::io_context ctx;
+            const auto c = boost::process::environment::current();
+            std::vector<boost::process::environment::key_value_pair> my_env{c.begin(), c.end()};
+            my_env.insert(my_env.end(), envVariables.begin(), envVariables.end());
 
             // TODO read till pipe is closed
-            if (bp::popen proc(ctx.get_executor(), command, args); proc.running())
+            if (bp::popen proc(ctx.get_executor(), command, args, boost::process::process_environment(my_env)); proc.running())
             {
                 proc.read_some(asio::buffer(buffer, 10240));
 
