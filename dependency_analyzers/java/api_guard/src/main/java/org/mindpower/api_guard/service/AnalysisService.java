@@ -98,7 +98,7 @@ public class AnalysisService {
     }
 
     private String getContextPath(String path) throws IOException {
-        var is = Files.newInputStream(Paths.get(path + "\\src\\main\\resources\\application.properties"));
+        var is = Files.newInputStream(Paths.get(path, "src", "main", "resources", "application.properties"));
         var props = new Properties();
         props.load(is);
 
