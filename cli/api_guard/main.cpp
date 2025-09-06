@@ -9,6 +9,12 @@
 #include "dependency_scanner/dependency_scanner.h"
 #include "process_handler/process_handler.h"
 
+#ifdef _WIN32
+#define SCRIPT_EXT ".cmd"
+#else
+#define SCRIPT_EXT = ".sh"
+#endif
+
 namespace fs = std::filesystem;
 
 void adaptTrapFiles(const Graph& g, const Vertex& cons_dep, const std::string& dbs_root);
@@ -95,7 +101,7 @@ int main(const int argc, char* argv[])
                        "database", "trace-command",
                        "--working-dir=" + dh.rootFolder, "--index-traceless-dbs", "--no-db-cluster",
                        verbosityFlag, "--", dbDir,
-                       codeqlRoot.generic_string() + "/java/tools/autobuild.cmd"
+                       codeqlRoot.generic_string() + "/java/tools/autobuild" + SCRIPT_EXT
                    },
                    {"CODEQL_EXTRACTOR_JAVA_OPTION_TRAP_COMPRESSION=NONE"});
 
