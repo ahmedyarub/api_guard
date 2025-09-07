@@ -12,7 +12,7 @@
 #ifdef _WIN32
 #define SCRIPT_EXT ".cmd"
 #else
-#define SCRIPT_EXT = ".sh"
+#define SCRIPT_EXT ".sh"
 #endif
 
 namespace fs = std::filesystem;
