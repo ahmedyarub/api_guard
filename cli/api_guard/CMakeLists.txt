@@ -33,6 +33,11 @@ add_custom_target(build_analyzer_jar ALL
 )
 
 install(FILES
+        "${CMAKE_SOURCE_DIR}/../../dependency_analyzers/java/api_guard/smartgraph.css"
+        DESTINATION analysers/java
+)
+
+install(FILES
         "${CMAKE_SOURCE_DIR}/../../dependency_analyzers/java/api_guard/target/api_guard-1.0-SNAPSHOT.jar"
         DESTINATION analysers/java
         RENAME java_analyser.jar
