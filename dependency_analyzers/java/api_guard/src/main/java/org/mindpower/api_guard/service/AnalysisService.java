@@ -2,12 +2,7 @@ package org.mindpower.api_guard.service;
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParseResult;
-import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.expr.NormalAnnotationExpr;
-import com.github.javaparser.ast.expr.SingleMemberAnnotationExpr;
-import com.github.javaparser.ast.expr.StringLiteralExpr;
 import javafx.util.Pair;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -15,7 +10,9 @@ import lombok.extern.java.Log;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
-import org.mindpower.api_guard.models.*;
+import org.mindpower.api_guard.models.DataHub;
+import org.mindpower.api_guard.models.Link;
+import org.mindpower.api_guard.models.Producer;
 import org.xml.sax.SAXException;
 import org.yaml.snakeyaml.Yaml;
 
@@ -73,7 +70,11 @@ public class AnalysisService {
 
                 dataHub.setGroupId(xpath.evaluate("/project/groupId", doc));
                 dataHub.setArtifactId(xpath.evaluate("/project/artifactId", doc));
-                dataHub.setContextPath(gerProperty(f.getParentFile(), "server.servlet.context-path"));
+
+                var serviceName = getProperty(f.getParentFile(), "spring.application.name");
+                dataHub.setName(serviceName == null ? dataHub.getArtifactId() : serviceName);
+
+                dataHub.setContextPath(getProperty(f.getParentFile(), "server.servlet.context-path"));
                 dataHub.setRootFolder(f.getParent());
 
                 parseJavaFile(f.getParent(), dataHub);
@@ -122,7 +123,7 @@ public class AnalysisService {
     }
 
     @SuppressWarnings("unchecked")
-    private String gerProperty(File serviceDir, String propertyPath) {
+    private String getProperty(File serviceDir, String propertyPath) {
         // Try to get from application properties
         File appProps = new File(serviceDir, "src/main/resources/application.properties");
         File appYaml = new File(serviceDir, "src/main/resources/application.yml");
@@ -182,70 +183,15 @@ public class AnalysisService {
                     var cu = parseResult.getResult().get();
 
                     // Extract endpoints
-                    var endpointExtractor = new EndpointExtractor();
+                    var endpointExtractor = new EndpointExtractor(dataHub);
                     cu.accept(endpointExtractor, dataHub.getProducers());
 
                     // Extract REST clients
-                    var clientExtractor = new RestClientExtractor();
+                    var clientExtractor = new RestClientExtractor(dataHub);
                     cu.accept(clientExtractor, dataHub.getConsumers());
                 }
             } catch (Exception e) {
                 log.severe(String.format("Error parsing Java file %s: %s", f.getName(), e.getMessage()));
-            }
-
-            var parsed = StaticJavaParser.parse(f);
-
-            for (var t : parsed.getTypes()) {
-                String annotationType;
-
-                if (t.getAnnotations()
-                        .stream()
-                        .anyMatch(annotationExpr -> endpointAnnotations.contains(annotationExpr.getName()
-                                .toString()))) {
-                    annotationType = "Endpoint";
-                } else if (t.getAnnotations()
-                        .stream()
-                        .anyMatch(annotationExpr -> clientAnnotations.contains(annotationExpr.getName().toString()))) {
-                    annotationType = "Client";
-                } else {
-                    continue;
-                }
-
-                for (var m : t.getMembers()) {
-                    if (m instanceof MethodDeclaration md) {
-                        for (var an : md.getAnnotations()) {
-                            if (an instanceof SingleMemberAnnotationExpr sam) {
-                                if (annotationType.equals("Endpoint")) {
-                                    var url = ((StringLiteralExpr) sam.getMemberValue()).getValue();
-                                    dataHub.getProducers()
-                                            .add(new Endpoint(url, parsed.getPackageDeclaration()
-                                                    .get()
-                                                    .getName() + "." + t.getNameAsString(), md.getName()
-                                                    .toString(), dataHub.getGroupId() + "." + dataHub.getArtifactId()));
-                                } else {
-                                    var ann = (NormalAnnotationExpr) t.getAnnotations()
-                                            .stream()
-                                            .filter(annotationExpr -> clientAnnotations.contains(annotationExpr.getName()
-                                                    .toString()))
-                                            .findFirst()
-                                            .get();
-                                    var pair = ann.getPairs()
-                                            .stream()
-                                            .filter(pairExpr -> pairExpr.getName().toString().equals("path"))
-                                            .findFirst()
-                                            .get();
-                                    var context = ((StringLiteralExpr) pair.getValue()).getValue();
-                                    var url = ((StringLiteralExpr) sam.getMemberValue()).getValue();
-
-                                    dataHub.getConsumers()
-                                            .add(new RestClient(context + url, parsed.getPackageDeclaration()
-                                                    .get()
-                                                    .getName() + "." + t.getNameAsString(), dataHub.getGroupId() + "." + dataHub.getArtifactId()));
-                                }
-                            }
-                        }
-                    }
-                }
             }
         }
     }

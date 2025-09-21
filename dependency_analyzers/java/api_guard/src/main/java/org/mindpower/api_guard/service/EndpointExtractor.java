@@ -5,12 +5,16 @@ import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.*;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
+import lombok.RequiredArgsConstructor;
+import org.mindpower.api_guard.models.DataHub;
 import org.mindpower.api_guard.models.Endpoint;
 import org.mindpower.api_guard.models.Producer;
 
 import java.util.List;
 
+@RequiredArgsConstructor
 public class EndpointExtractor extends VoidVisitorAdapter<List<Producer>> {
+    private final DataHub dataHub;
 
     @Override
     public void visit(ClassOrInterfaceDeclaration n, List<Producer> endpoints) {
@@ -27,11 +31,14 @@ public class EndpointExtractor extends VoidVisitorAdapter<List<Producer>> {
         }
 
         String classPath = extractPathFromAnnotation(n.getAnnotations(), "RequestMapping");
-        String className = n.getNameAsString();
 
         // Process all methods in the controller
         n.getMethods().forEach(method -> {
-            extractEndpointFromMethod(method, classPath, className, endpoints);
+            extractEndpointFromMethod(
+                    method,
+                    classPath, n.getFullyQualifiedName().orElse(n.getNameAsString()),
+                    endpoints
+            );
         });
     }
 
@@ -71,7 +78,7 @@ public class EndpointExtractor extends VoidVisitorAdapter<List<Producer>> {
             if (httpMethod != null) {
                 String fullPath = combinePaths(classPath, methodPath);
 
-                var endpoint = new Endpoint(fullPath, className, method.getName().toString(), classPath);
+                var endpoint = new Endpoint(fullPath, className, method.getName().toString(), dataHub.getFqn());
 
                 endpoints.add(endpoint);
             }
