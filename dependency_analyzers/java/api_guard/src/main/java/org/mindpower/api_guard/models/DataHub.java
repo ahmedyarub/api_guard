@@ -13,6 +13,8 @@ import java.util.Set;
 @ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class DataHub {
+    private String name;
+
     @ToString.Include
     @EqualsAndHashCode.Include
     String groupId;
@@ -24,6 +26,8 @@ public class DataHub {
     @ToString.Include
     @EqualsAndHashCode.Include
     String contextPath;
+
+    private String port;
 
     String rootFolder;
     List<Producer> producers = new ArrayList<>();

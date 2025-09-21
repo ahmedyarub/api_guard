@@ -11,6 +11,7 @@ import javafx.scene.control.ListView;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import javafx.stage.StageStyle;
+import lombok.extern.java.Log;
 import org.mindpower.api_guard.models.DataHub;
 import org.mindpower.api_guard.models.Link;
 import org.mindpower.api_guard.service.AnalysisService;
@@ -18,15 +19,23 @@ import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPathExpressionException;
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.prefs.Preferences;
 
+@Log
 public class AnalysisController {
+    private static final String LAST_DIRECTORY_KEY = "lastSelectedDirectory";
+    private final Preferences prefs = Preferences.userNodeForPackage(ApiGuardApplication.class);
     private final AnalysisService analysisService = new AnalysisService();
+
     @FXML
     private Button analyzeButton;
+
     @FXML
     private Button openButton;
+
     @FXML
     private ListView<DataHub> projectsList;
 
@@ -35,9 +44,13 @@ public class AnalysisController {
         var directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle("Select the root folder of your projects");
 
+        directoryChooser.setInitialDirectory(getLastDirectory());
+
         var selectedDirectory = directoryChooser.showDialog(null);
 
         if (selectedDirectory != null) {
+            saveLastDirectory(selectedDirectory);
+
             analysisService.addFolder(Path.of(selectedDirectory.getAbsolutePath()));
 
             for (var dataHub : analysisService.getDataHubs()) {
@@ -83,5 +96,21 @@ public class AnalysisController {
         }
 
         return g;
+    }
+
+    private File getLastDirectory() {
+        String lastPath = prefs.get(LAST_DIRECTORY_KEY, System.getProperty("user.home"));
+        File dir = new File(lastPath);
+        // Validate the directory still exists
+        return dir.exists() && dir.isDirectory() ? dir : new File(System.getProperty("user.home"));
+    }
+
+    private void saveLastDirectory(File directory) {
+        if (directory != null) {
+            // If it's a file, get its parent directory
+            String path = directory.isDirectory() ? directory.getAbsolutePath() : directory.getParentFile()
+                    .getAbsolutePath();
+            prefs.put(LAST_DIRECTORY_KEY, path);
+        }
     }
 }
