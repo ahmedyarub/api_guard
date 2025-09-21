@@ -1,5 +1,6 @@
 package org.mindpower.api_guard.models;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
@@ -11,10 +12,9 @@ import java.util.Set;
 
 @Data
 @ToString(onlyExplicitlyIncluded = true)
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class DataHub {
-    private String name;
-
     @ToString.Include
     @EqualsAndHashCode.Include
     String groupId;
@@ -27,10 +27,14 @@ public class DataHub {
     @EqualsAndHashCode.Include
     String contextPath;
 
-    private String port;
-
     String rootFolder;
     List<Producer> producers = new ArrayList<>();
     List<Consumer> consumers = new ArrayList<>();
     Set<Link> links = new HashSet<>();
+    private String name;
+    private String port;
+
+    public String getFqn() {
+        return groupId + "." + artifactId;
+    }
 }
