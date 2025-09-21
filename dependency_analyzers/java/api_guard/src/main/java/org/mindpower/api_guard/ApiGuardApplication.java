@@ -47,10 +47,7 @@ public class ApiGuardApplication extends Application implements Runnable {
 
         var mapper = new ObjectMapper();
 
-        System.out.println(
-                mapper.writerWithDefaultPrettyPrinter()
-                        .writeValueAsString(analysisService.getDataHubs())
-        );
+        System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(analysisService.getDataHubs()));
 
         System.exit(0);
     }

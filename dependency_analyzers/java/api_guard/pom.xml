@@ -60,6 +60,12 @@
             <artifactId>jackson-databind</artifactId>
             <version>2.19.2</version>
         </dependency>
+
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>2.4</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -113,7 +119,7 @@
                     </archive>
                 </configuration>
             </plugin>
-            <!-- Shade plugin to create fat JAR -->
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
