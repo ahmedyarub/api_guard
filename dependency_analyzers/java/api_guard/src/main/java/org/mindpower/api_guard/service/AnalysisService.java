@@ -30,8 +30,6 @@ import java.util.*;
 @Log
 @NoArgsConstructor
 public class AnalysisService {
-    private static final List<String> endpointAnnotations = List.of("RestController");
-    private static final List<String> clientAnnotations = List.of("FeignClient");
     private final JavaParser javaParser = new JavaParser();
     private final Yaml yamlParser = new Yaml();
 

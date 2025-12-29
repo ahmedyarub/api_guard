@@ -1,6 +1,5 @@
 package org.mindpower.api_guard;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -8,6 +7,7 @@ import javafx.stage.Stage;
 import lombok.SneakyThrows;
 import org.mindpower.api_guard.service.AnalysisService;
 import picocli.CommandLine;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -31,7 +31,7 @@ public class ApiGuardApplication extends Application implements Runnable {
     @Override
     public void start(Stage stage) throws IOException {
         var fxmlLoader = new FXMLLoader(ApiGuardApplication.class.getResource("analysis-view.fxml"));
-        var scene = new Scene(fxmlLoader.load(), 300, 200);
+        var scene = new Scene(fxmlLoader.load(), 800, 600);
 
         stage.setTitle("API Guard");
         stage.setScene(scene);
