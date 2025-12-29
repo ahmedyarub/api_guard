@@ -2,8 +2,6 @@
 #define CONSUMER_H
 #include <string>
 
-#include "DataHub.h"
-
 class DataHub;
 
 class Consumer

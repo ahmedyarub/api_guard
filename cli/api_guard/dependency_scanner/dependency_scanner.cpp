@@ -65,7 +65,7 @@ void DependencyScanner::addEdge(const Consumer& cons, const Producer& prod)
 
 Graph DependencyScanner::scanDependencies(const std::string& projects_root)
 {
-    auto javaExePath = getExecutablePath("java");
+    const auto javaExePath = getExecutablePath("java");
 
     auto result = runProcess(
         javaExePath, {
