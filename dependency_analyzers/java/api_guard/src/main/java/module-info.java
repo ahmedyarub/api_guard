@@ -9,9 +9,10 @@ module org.mindpower.api_guard {
     requires java.desktop;
     requires com.brunomnsilva.smartgraph;
     requires info.picocli;
-    requires com.fasterxml.jackson.databind;
     requires org.yaml.snakeyaml;
     requires java.prefs;
+    requires com.fasterxml.jackson.annotation;
+    requires tools.jackson.databind;
 
     opens org.mindpower.api_guard to javafx.fxml, info.picocli;
     exports org.mindpower.api_guard;
