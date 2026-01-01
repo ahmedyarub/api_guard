@@ -171,7 +171,7 @@ public class AnalysisService {
         return serviceDir.getName();
     }
 
-    void parseJavaFile(String root, DataHub dataHub) throws IOException {
+    void parseJavaFile(String root, DataHub dataHub) {
 
         for (Iterator<File> it = find(Path.of(root), "java"); it.hasNext(); ) {
             var f = it.next();

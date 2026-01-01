@@ -1,9 +1,10 @@
 package org.mindpower.api_guard.service;
 
-import com.github.javaparser.ast.NodeList;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
-import com.github.javaparser.ast.expr.*;
+import com.github.javaparser.ast.expr.Expression;
+import com.github.javaparser.ast.expr.FieldAccessExpr;
+import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import lombok.RequiredArgsConstructor;
 import org.mindpower.api_guard.models.DataHub;
@@ -11,6 +12,9 @@ import org.mindpower.api_guard.models.Endpoint;
 import org.mindpower.api_guard.models.Producer;
 
 import java.util.List;
+
+import static org.mindpower.api_guard.Utils.ExtractionUtils.extractPathFromAnnotation;
+import static org.mindpower.api_guard.Utils.ExtractionUtils.extractStringValue;
 
 @RequiredArgsConstructor
 public class EndpointExtractor extends VoidVisitorAdapter<List<Producer>> {
@@ -20,131 +24,119 @@ public class EndpointExtractor extends VoidVisitorAdapter<List<Producer>> {
     public void visit(ClassOrInterfaceDeclaration n, List<Producer> endpoints) {
         super.visit(n, endpoints);
 
-        // Check if class has @RestController or @Controller
-        boolean isController = n.getAnnotations()
-                .stream()
-                .anyMatch(a -> a.getNameAsString().equals("RestController") || a.getNameAsString()
-                        .equals("Controller"));
+        extractRestController(n, endpoints);
+    }
 
-        if (!isController) {
+    @Override
+    public void visit(MethodDeclaration n, List<Producer> endpoints) {
+        super.visit(n, endpoints);
+
+        // Check if method returns RouterFunction
+        if (n.getType().toString().contains("RouterFunction")) {
+            // Look for @Bean annotation
+            boolean isBean = n.getAnnotations().stream().anyMatch(a -> a.getNameAsString().equals("Bean"));
+
+            if (isBean) {
+                extractRouterEndpoints(n, endpoints);
+            }
+        }
+    }
+
+    private void extractRouterEndpoints(MethodDeclaration method, List<Producer> endpoints) {
+        @SuppressWarnings("unchecked") var className = method.findAncestor(ClassOrInterfaceDeclaration.class)
+                .map(cid -> cid.getFullyQualifiedName().orElse("Unknown"))
+                .orElse("Unknown");
+
+        // Visit the method body to find route definitions
+        method.getBody().ifPresent(body -> body.accept(new VoidVisitorAdapter<>() {
+            @Override
+            public void visit(MethodCallExpr n, List<Producer> endpoints) {
+                super.visit(n, endpoints);
+
+                // Extract route patterns
+                if (n.getNameAsString().equals("route")) {
+                    extractRouteFromCall(n, className, method.getNameAsString(), endpoints);
+                }
+            }
+        }, endpoints));
+    }
+
+    private void extractRestController(ClassOrInterfaceDeclaration n, List<Producer> endpoints) {
+        var annotationOptional = n.getAnnotations()
+                .stream()
+                .filter(a -> a.getNameAsString().equals("RestController") || a.getNameAsString().equals("Controller"))
+                .findFirst();
+
+        if (annotationOptional.isEmpty()) {
             return;
         }
 
-        String classPath = extractPathFromAnnotation(n.getAnnotations(), "RequestMapping");
-
-        // Process all methods in the controller
-        n.getMethods().forEach(method -> {
-            extractEndpointFromMethod(
-                    method,
-                    classPath, n.getFullyQualifiedName().orElse(n.getNameAsString()),
-                    endpoints
-            );
-        });
+        n.getMethods()
+                .forEach(method -> extractEndpointFromMethod(method, n.getFullyQualifiedName()
+                        .orElse(n.getNameAsString()), endpoints));
     }
 
-    private void extractEndpointFromMethod(MethodDeclaration method, String classPath, String className, List<Producer> endpoints) {
+    private void extractEndpointFromMethod(MethodDeclaration method, String className, List<Producer> endpoints) {
 
-        for (AnnotationExpr annotation : method.getAnnotations()) {
-            String annotationName = annotation.getNameAsString();
-            String httpMethod = null;
-            String methodPath = switch (annotationName) {
-                case "GetMapping" -> {
-                    httpMethod = "GET";
-                    yield extractPathFromAnnotation(annotation);
-                }
-                case "PostMapping" -> {
-                    httpMethod = "POST";
-                    yield extractPathFromAnnotation(annotation);
-                }
-                case "PutMapping" -> {
-                    httpMethod = "PUT";
-                    yield extractPathFromAnnotation(annotation);
-                }
-                case "DeleteMapping" -> {
-                    httpMethod = "DELETE";
-                    yield extractPathFromAnnotation(annotation);
-                }
-                case "PatchMapping" -> {
-                    httpMethod = "PATCH";
-                    yield extractPathFromAnnotation(annotation);
-                }
-                case "RequestMapping" -> {
-                    httpMethod = extractHttpMethodFromRequestMapping(annotation);
-                    yield extractPathFromAnnotation(annotation);
-                }
-                default -> "";
-            };
+        for (var annotation : method.getAnnotations()) {
+            var methodPath = extractPathFromAnnotation(annotation);
 
-            if (httpMethod != null) {
-                String fullPath = combinePaths(classPath, methodPath);
+            endpoints.add(new Endpoint(methodPath, className, method.getName().toString(), dataHub.getFqn()));
+        }
+    }
 
-                var endpoint = new Endpoint(fullPath, className, method.getName().toString(), dataHub.getFqn());
+    private void extractRouteFromCall(MethodCallExpr call, String className, String methodName, List<Producer> endpoints) {
+        if (call.getArguments().size() >= 2) {
+            var endpoint = new Endpoint();
 
+            endpoint.setMethod(methodName);
+            endpoint.setController(className);
+            endpoint.setParentFqn(dataHub.getFqn());
+
+            extractRouteInfo(call.getArgument(0), endpoint, endpoints);
+        }
+    }
+
+    private void extractRouteInfo(Expression expr, Endpoint endpoint, List<Producer> endpoints) {
+        if (expr instanceof MethodCallExpr methodCall) {
+            var methodName = methodCall.getNameAsString();
+
+            // Handle RequestPredicates.GET("/path") style
+            switch (methodName) {
+                case "GET", "POST", "PUT", "DELETE", "PATCH" -> {
+                    if (!methodCall.getArguments().isEmpty()) {
+                        endpoint.setUrl(extractStringValue(methodCall.getArgument(0)));
+                    }
+                }
+                case "path" -> {
+                    // Handle RequestPredicates.path("/path")
+                    if (!methodCall.getArguments().isEmpty()) {
+                        endpoint.setUrl(extractStringValue(methodCall.getArgument(0)));
+                    }
+                }
+                case "method" -> {
+                    // Handle RequestPredicates.method(HttpMethod.GET)
+                    if (!methodCall.getArguments().isEmpty()) {
+                        endpoint.setMethod(extractHttpMethod(methodCall.getArgument(0)));
+                    }
+                }
+            }
+
+            // Check for chained calls like GET("/path").and(...)
+            if (methodCall.getScope().isPresent()) {
+                extractRouteInfo(methodCall.getScope().get(), endpoint, endpoints);
+            } else {
+                // only add the endpoint at the end of the chain
                 endpoints.add(endpoint);
             }
         }
     }
 
-    private String extractPathFromAnnotation(NodeList<AnnotationExpr> annotations, String annotationName) {
-        return annotations.stream()
-                .filter(a -> a.getNameAsString().equals(annotationName))
-                .findFirst()
-                .map(this::extractPathFromAnnotation)
-                .orElse("");
-    }
-
-    private String extractPathFromAnnotation(AnnotationExpr annotation) {
-        if (annotation instanceof SingleMemberAnnotationExpr singleMember) {
-            return extractStringValue(singleMember.getMemberValue());
-        } else if (annotation instanceof NormalAnnotationExpr normal) {
-            return normal.getPairs()
-                    .stream()
-                    .filter(p -> p.getNameAsString().equals("value") || p.getNameAsString().equals("path"))
-                    .findFirst()
-                    .map(p -> extractStringValue(p.getValue()))
-                    .orElse("");
+    private String extractHttpMethod(Expression expr) {
+        if (expr instanceof FieldAccessExpr field) {
+            return field.getNameAsString();
         }
-        return "";
-    }
 
-    private String extractHttpMethodFromRequestMapping(AnnotationExpr annotation) {
-        if (annotation instanceof NormalAnnotationExpr normal) {
-            return normal.getPairs().stream().filter(p -> p.getNameAsString().equals("method")).findFirst().map(p -> {
-                Expression value = p.getValue();
-                if (value instanceof FieldAccessExpr) {
-                    return ((FieldAccessExpr) value).getNameAsString().replace("RequestMethod.", "");
-                }
-                return "GET"; // Default
-            }).orElse("GET");
-        }
         return "GET";
-    }
-
-    private String extractStringValue(Expression expr) {
-        if (expr instanceof StringLiteralExpr) {
-            return ((StringLiteralExpr) expr).getValue();
-        } else if (expr instanceof ArrayInitializerExpr array) {
-            var value = array.getValues().getFirst();
-            if (value.isPresent()) {
-                return extractStringValue(value.get());
-            }
-        }
-        return "";
-    }
-
-    private String combinePaths(String classPath, String methodPath) {
-        if (classPath == null || classPath.isEmpty()) {
-            return methodPath.isEmpty() ? "/" : methodPath;
-        }
-        if (methodPath.isEmpty()) {
-            return classPath;
-        }
-        if (!classPath.endsWith("/") && !methodPath.startsWith("/")) {
-            return classPath + "/" + methodPath;
-        }
-        if (classPath.endsWith("/") && methodPath.startsWith("/")) {
-            return classPath + methodPath.substring(1);
-        }
-        return classPath + methodPath;
     }
 }
