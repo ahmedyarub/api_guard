@@ -1,9 +1,9 @@
 package org.mindpower.api_guard.models;
 
-import lombok.Getter;
+import lombok.Data;
 import lombok.ToString;
 
-@Getter
+@Data
 @ToString
 public abstract class Producer {
     protected String url;
