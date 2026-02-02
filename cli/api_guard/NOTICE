@@ -1,0 +1,11 @@
+API Guard - Community Edition
+Copyright 2026 Ahmed Yarub Hani Al Nuaimi
+
+This product includes software developed by [Your Name or Company Name].
+
+--
+Dependencies:
+This product interacts with the CodeQL CLI, which is subject to the
+GitHub CodeQL Terms and Conditions. Users are responsible for ensuring
+they have the appropriate license (e.g., GitHub Advanced Security)
+to run CodeQL analyses on private repositories.
