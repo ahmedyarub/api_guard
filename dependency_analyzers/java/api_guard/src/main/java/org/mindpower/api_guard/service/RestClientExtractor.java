@@ -69,21 +69,16 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
                 var client = extractRestTemplateCall(n);
 
                 //TODO avoid duplication
-                if (
-                        client.getUrl() != null &&
-                        clients.stream().noneMatch(consumer -> consumer.getUrl().equals(client.getUrl()))
-                ) {
+                if (client.getUrl() != null && clients.stream()
+                        .noneMatch(consumer -> consumer.getUrl().equals(client.getUrl()))) {
                     clients.add(client);
                 }
             } else if (scopeName.contains("webClient")) {
                 var client = extractWebClientCall(n);
 
                 //TODO avoid duplication
-                if (
-                        client != null &&
-                        client.getUrl() != null &&
-                        clients.stream().noneMatch(consumer -> consumer.getUrl().equals(client.getUrl()))
-                ) {
+                if (client != null && client.getUrl() != null && clients.stream()
+                        .noneMatch(consumer -> consumer.getUrl().equals(client.getUrl()))) {
                     clients.add(client);
                 }
             }
@@ -107,10 +102,27 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
 
         // Extract URL from first argument
         if (!call.getArguments().isEmpty()) {
-            url = extractStringValue(call.getArgument(0));
+            url = extractPath(extractStringValue(call.getArgument(0)));
         }
 
         return new RestClient(url, call.getNameAsString(), dataHub.getFqn());
+    }
+
+    public String extractPath(String fullUrl) {
+        if (fullUrl == null)
+            return null;
+
+        int protocolEnd = fullUrl.indexOf("://");
+
+        if (protocolEnd != -1) {
+            int pathStart = fullUrl.indexOf("/", protocolEnd + 3);
+
+            if (pathStart != -1) {
+                return fullUrl.substring(pathStart);
+            }
+        }
+
+        return fullUrl;
     }
 
     private RestClient extractWebClientCall(MethodCallExpr call) {
