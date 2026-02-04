@@ -19,6 +19,7 @@ package org.mindpower.api_guard.service;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.expr.Expression;
+import com.github.javaparser.ast.expr.LambdaExpr;
 import com.github.javaparser.ast.expr.MethodCallExpr;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import lombok.RequiredArgsConstructor;
@@ -60,16 +61,29 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
     public void visit(MethodCallExpr n, List<Consumer> clients) {
         super.visit(n, clients);
 
-        // Check for RestTemplate calls
         if (n.getScope().isPresent()) {
             Expression scope = n.getScope().get();
             String scopeName = scope.toString();
 
             if (scopeName.contains("restTemplate")) {
-                clients.add(extractRestTemplateCall(n));
+                var client = extractRestTemplateCall(n);
+
+                //TODO avoid duplication
+                if (
+                        client.getUrl() != null &&
+                        clients.stream().noneMatch(consumer -> consumer.getUrl().equals(client.getUrl()))
+                ) {
+                    clients.add(client);
+                }
             } else if (scopeName.contains("webClient")) {
                 var client = extractWebClientCall(n);
-                if (client != null) {
+
+                //TODO avoid duplication
+                if (
+                        client != null &&
+                        client.getUrl() != null &&
+                        clients.stream().noneMatch(consumer -> consumer.getUrl().equals(client.getUrl()))
+                ) {
                     clients.add(client);
                 }
             }
@@ -110,14 +124,43 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
     }
 
     private String extractWebClientUrl(MethodCallExpr call) {
-        // Look for .uri() method in the chain
         var current = call;
+
         while (current != null) {
             if (current.getNameAsString().equals("uri") && !current.getArguments().isEmpty()) {
-                return extractStringValue(current.getArgument(0));
+                var url = extractStringValue(current.getArgument(0));
+                if (url != null && !url.isEmpty()) {
+                    return url;
+                }
+
+                if (current.getArgument(0) instanceof LambdaExpr pathLambda) {
+                    var body = pathLambda.getBody();
+
+                    if (body.isExpressionStmt()) {
+                        var expr = body.asExpressionStmt().getExpression();
+
+                        if (expr.isMethodCallExpr()) {
+                            var lambdaCall = expr.asMethodCallExpr();
+
+                            while (lambdaCall != null) {
+                                if (lambdaCall.getNameAsString().equals("path") && !lambdaCall.getArguments()
+                                        .isEmpty()) {
+                                    return extractStringValue(lambdaCall.getArgument(0));
+                                }
+
+                                if (lambdaCall.getScope().isPresent() && lambdaCall.getScope()
+                                        .get()
+                                        .isMethodCallExpr()) {
+                                    lambdaCall = lambdaCall.getScope().get().asMethodCallExpr();
+                                } else {
+                                    lambdaCall = null; // Stop if we hit the variable name (uriBuilder)
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            // Check if there's a chained call
             if (current.getScope().isPresent() && current.getScope().get() instanceof MethodCallExpr) {
                 current = (MethodCallExpr) current.getScope().get();
             } else {
