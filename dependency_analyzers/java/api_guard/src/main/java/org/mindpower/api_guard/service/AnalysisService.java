@@ -85,10 +85,10 @@ public class AnalysisService {
                 dataHub.setGroupId(xpath.evaluate("/project/groupId", doc));
                 dataHub.setArtifactId(xpath.evaluate("/project/artifactId", doc));
 
-                var serviceName = getProperty(f.getParentFile(), "spring.application.name");
+                var serviceName = getProperty(f.getParentFile(), Collections.singletonList("spring.application.name"));
                 dataHub.setName(serviceName == null ? dataHub.getArtifactId() : serviceName);
 
-                dataHub.setContextPath(getProperty(f.getParentFile(), "server.servlet.context-path"));
+                dataHub.setContextPath(getProperty(f.getParentFile(), List.of("server.servlet.context-path", "spring.webflux.base-path")));
                 dataHub.setRootFolder(f.getParent());
 
                 parseJavaFile(f.getParent(), dataHub);
@@ -137,7 +137,7 @@ public class AnalysisService {
     }
 
     @SuppressWarnings("unchecked")
-    private String getProperty(File serviceDir, String propertyPath) {
+    private String getProperty(File serviceDir, List<String> propertyPaths) {
         // Try to get from application properties
         File appProps = new File(serviceDir, "src/main/resources/application.properties");
         File appYaml = new File(serviceDir, "src/main/resources/application.yml");
@@ -150,9 +150,11 @@ public class AnalysisService {
 
                     props.load(fis);
 
-                    var name = props.getProperty(propertyPath);
-                    if (name != null && !name.isEmpty()) {
-                        return name;
+                    for (var propertyPath : propertyPaths) {
+                        var name = props.getProperty(propertyPath);
+                        if (name != null && !name.isEmpty()) {
+                            return name;
+                        }
                     }
                 }
             }
@@ -161,20 +163,22 @@ public class AnalysisService {
                 File yamlFile = appYaml.exists() ? appYaml : appYaml2;
 
                 try (FileInputStream fis = new FileInputStream(yamlFile)) {
-                    String[] parts = propertyPath.split("\\.");
                     Object current = yamlParser.load(fis);
 
-                    for (String part : parts) {
-                        if (current == null) {
-                            return null;
-                        }
+                    for (var propertyPath : propertyPaths) {
+                        String[] parts = propertyPath.split("\\.");
+                        for (String part : parts) {
+                            if (current == null) {
+                                return null;
+                            }
 
-                        if (current instanceof Map) {
-                            Map<String, Object> map = (Map<String, Object>) current;
-                            current = map.get(part);
-                        } else {
-                            // Not a map, can't navigate further
-                            return null;
+                            if (current instanceof Map) {
+                                Map<String, Object> map = (Map<String, Object>) current;
+                                current = map.get(part);
+                            } else {
+                                // Not a map, can't navigate further
+                                return null;
+                            }
                         }
                     }
                 }
@@ -184,7 +188,7 @@ public class AnalysisService {
         }
 
         // Fallback to directory name
-        return serviceDir.getName();
+        return "/" + serviceDir.getName();
     }
 
     void parseJavaFile(String root, DataHub dataHub) {
