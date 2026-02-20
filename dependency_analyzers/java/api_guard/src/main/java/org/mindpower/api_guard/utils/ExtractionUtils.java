@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package org.mindpower.api_guard.Utils;
+package org.mindpower.api_guard.utils;
 
 import com.github.javaparser.ast.expr.*;
 import lombok.experimental.UtilityClass;

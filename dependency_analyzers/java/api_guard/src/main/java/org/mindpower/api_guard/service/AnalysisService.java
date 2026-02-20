@@ -163,22 +163,26 @@ public class AnalysisService {
                 File yamlFile = appYaml.exists() ? appYaml : appYaml2;
 
                 try (FileInputStream fis = new FileInputStream(yamlFile)) {
-                    Object current = yamlParser.load(fis);
+                    Object root = yamlParser.load(fis);
 
                     for (var propertyPath : propertyPaths) {
+                        Object current = root;
                         String[] parts = propertyPath.split("\\.");
-                        for (String part : parts) {
-                            if (current == null) {
-                                return null;
-                            }
+                        boolean resolved = true;
 
+                        for (String part : parts) {
                             if (current instanceof Map) {
+                                @SuppressWarnings("unchecked")
                                 Map<String, Object> map = (Map<String, Object>) current;
                                 current = map.get(part);
                             } else {
-                                // Not a map, can't navigate further
-                                return null;
+                                resolved = false;
+                                break;
                             }
+                        }
+
+                        if (resolved && current instanceof String value && !value.isEmpty()) {
+                            return value;
                         }
                     }
                 }
