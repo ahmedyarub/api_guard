@@ -40,13 +40,13 @@ std::string runProcess(const boost::process::v2::filesystem::path& command, cons
 
         while (proc.running())
         {
-            auto bytes_read = proc.read_some(asio::buffer(buffer, chunk_size), ec);
+            const auto bytes_read = proc.read_some(asio::buffer(buffer, chunk_size), ec);
             if (ec)
                 break;
             output.append(buffer, bytes_read);
         }
 
-        while (auto bytes_read = proc.read_some(asio::buffer(buffer, chunk_size), ec))
+        while (const auto bytes_read = proc.read_some(asio::buffer(buffer, chunk_size), ec))
         {
             if (ec)
                 break;
