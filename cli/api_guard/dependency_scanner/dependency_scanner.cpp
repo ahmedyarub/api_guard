@@ -83,6 +83,7 @@ Graph DependencyScanner::scanDependencies(const std::string& projects_root)
 
     auto result = runProcess(
         javaExePath, {
+            "--enable-native-access=javafx.graphics",
             "--module-path", javaFxPath + "/lib",
             "--add-modules", "javafx.controls",
             "-jar",
