@@ -59,7 +59,7 @@ void DependencyScanner::addVertex(const DataHub* dh)
 {
     if (!adj.contains(dh->getFqn()))
     {
-        const auto v = add_vertex(dhGraph);
+        const auto v = boost::add_vertex(dhGraph);
         dhGraph[v] = *dh;
         adj[dh->getFqn()] = v;
     }
@@ -74,12 +74,17 @@ void DependencyScanner::addEdge(const Consumer& cons, const Producer& prod)
     addVertex(fromDh);
     addVertex(toDh);
 
-    add_edge(adj[fromDh->getFqn()], adj[toDh->getFqn()], dhGraph);
+    boost::add_edge(adj[fromDh->getFqn()], adj[toDh->getFqn()], dhGraph);
 }
 
 Graph DependencyScanner::scanDependencies(const std::string& projects_root)
 {
     const auto javaExePath = getExecutablePath("java");
+    if (javaExePath.empty())
+    {
+        std::cerr << "Error: 'java' executable not found on PATH." << std::endl;
+        return dhGraph;
+    }
 
     auto result = runProcess(
         javaExePath, {

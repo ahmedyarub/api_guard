@@ -21,10 +21,8 @@
 
 #include "../models/DataHub.h"
 
-using namespace boost;
-
-typedef adjacency_list<vecS, vecS, directedS, DataHub, Link> Graph;
-typedef graph_traits<Graph>::vertex_descriptor Vertex;
+using Graph = boost::adjacency_list<boost::vecS, boost::vecS, boost::directedS, DataHub, Link>;
+using Vertex = boost::graph_traits<Graph>::vertex_descriptor;
 
 class DependencyScanner
 {
