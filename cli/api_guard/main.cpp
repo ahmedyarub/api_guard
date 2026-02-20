@@ -69,10 +69,15 @@ int main(const int argc, char* argv[])
     else
     {
         java_analyzer_path =
-            dll::program_location().parent_path().generic_string() + "/analysers/java/java_analyser.jar";
+            boost::dll::program_location().parent_path().generic_string() + "/analysers/java/java_analyser.jar";
     }
 
     auto codeqlExePath = getExecutablePath("codeql");
+    if (codeqlExePath.empty())
+    {
+        std::cerr << "Error: 'codeql' executable not found on PATH." << std::endl;
+        return 1;
+    }
     auto codeqlRoot = codeqlExePath.parent_path();
 
     DependencyScanner scanner(java_analyzer_path, javafx_path);
@@ -88,7 +93,7 @@ int main(const int argc, char* argv[])
     fs::create_directory(dbs_root);
 
     std::deque<Vertex> deps;
-    topological_sort(g, std::front_inserter(deps));
+    boost::topological_sort(g, std::front_inserter(deps));
     std::string verbosityFlag = "--verbosity=warnings";
 
     for (const auto dep : deps)
@@ -196,12 +201,12 @@ void adaptTrapFiles(const Graph& g, const Vertex& cons_dep, const std::string& d
         }
     }
 
-    graph_traits<Graph>::edge_iterator ei, ei_end;
-    for (tie(ei, ei_end) = edges(g); ei != ei_end; ++ei)
+    boost::graph_traits<Graph>::edge_iterator ei, ei_end;
+    for (boost::tie(ei, ei_end) = boost::edges(g); ei != ei_end; ++ei)
     {
-        if (target(*ei, g) == cons_dep)
+        if (boost::target(*ei, g) == cons_dep)
         {
-            auto prod_dep = g[source(*ei, g)];
+            auto prod_dep = g[boost::source(*ei, g)];
             std::string prodDbRoot = dbs_root + "/" + prod_dep.artifactId;
             std::string normalizedProdRoot = prod_dep.rootFolder;
             std::ranges::replace(normalizedProdRoot, ':', '_');

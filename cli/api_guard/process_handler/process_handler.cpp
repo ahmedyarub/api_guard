@@ -23,35 +23,48 @@ namespace asio = boost::asio;
 
 std::string runProcess(const boost::process::v2::filesystem::path& command, const std::vector<std::string>& args, const std::vector<std::string>& envVariables)
 {
-    char buffer[10240] = {};
+    std::string output;
 
+    try
     {
-        try
-        {
-            asio::io_context ctx;
-            const auto c = boost::process::environment::current();
-            std::vector<boost::process::environment::key_value_pair> my_env{c.begin(), c.end()};
-            my_env.insert(my_env.end(), envVariables.begin(), envVariables.end());
+        asio::io_context ctx;
+        const auto c = boost::process::environment::current();
+        std::vector<boost::process::environment::key_value_pair> my_env{c.begin(), c.end()};
+        my_env.insert(my_env.end(), envVariables.begin(), envVariables.end());
 
-            // TODO read till pipe is closed
-            if (bp::popen proc(ctx.get_executor(), command, args, boost::process::process_environment(my_env)); proc.running())
-            {
-                proc.read_some(asio::buffer(buffer, 10240));
+        bp::popen proc(ctx.get_executor(), command, args, boost::process::process_environment(my_env));
 
-                proc.wait();
-            }
-        }
-        catch (const std::exception& e)
+        constexpr std::size_t chunk_size = 8192;
+        char buffer[chunk_size];
+        boost::system::error_code ec;
+
+        while (proc.running())
         {
-            // std::cerr << "[Standard Exception] " << e.what() << '\n';
+            const auto bytes_read = proc.read_some(asio::buffer(buffer, chunk_size), ec);
+            if (ec)
+                break;
+            output.append(buffer, bytes_read);
         }
-        catch (...)
+
+        while (const auto bytes_read = proc.read_some(asio::buffer(buffer, chunk_size), ec))
         {
-            std::cerr << "[Unknown Error] Something went wrong.\n";
+            if (ec)
+                break;
+            output.append(buffer, bytes_read);
         }
+
+        proc.wait();
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "[Process Error] " << e.what() << '\n';
+    }
+    catch (...)
+    {
+        std::cerr << "[Unknown Error] Something went wrong.\n";
     }
 
-    return buffer;
+    return output;
 }
 
 boost::process::v2::filesystem::path getExecutablePath(const std::string& exe)

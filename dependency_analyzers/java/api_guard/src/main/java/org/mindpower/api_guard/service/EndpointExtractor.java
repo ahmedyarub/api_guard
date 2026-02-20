@@ -29,8 +29,8 @@ import org.mindpower.api_guard.models.Producer;
 
 import java.util.List;
 
-import static org.mindpower.api_guard.Utils.ExtractionUtils.extractPathFromAnnotation;
-import static org.mindpower.api_guard.Utils.ExtractionUtils.extractStringValue;
+import static org.mindpower.api_guard.utils.ExtractionUtils.extractPathFromAnnotation;
+import static org.mindpower.api_guard.utils.ExtractionUtils.extractStringValue;
 
 @RequiredArgsConstructor
 public class EndpointExtractor extends VoidVisitorAdapter<List<Producer>> {
