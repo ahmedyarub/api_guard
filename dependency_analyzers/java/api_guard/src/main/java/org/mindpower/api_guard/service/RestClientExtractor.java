@@ -28,9 +28,10 @@ import org.mindpower.api_guard.models.DataHub;
 import org.mindpower.api_guard.models.RestClient;
 
 import java.util.List;
+import java.util.Set;
 
-import static org.mindpower.api_guard.Utils.ExtractionUtils.extractPathFromAnnotation;
-import static org.mindpower.api_guard.Utils.ExtractionUtils.extractStringValue;
+import static org.mindpower.api_guard.utils.ExtractionUtils.extractPathFromAnnotation;
+import static org.mindpower.api_guard.utils.ExtractionUtils.extractStringValue;
 
 @RequiredArgsConstructor
 public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
@@ -66,30 +67,25 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
             String scopeName = scope.toString();
 
             if (scopeName.contains("restTemplate")) {
-                var client = extractRestTemplateCall(n);
-
-                //TODO avoid duplication
-                if (client.getUrl() != null && clients.stream()
-                        .noneMatch(consumer -> consumer.getUrl().equals(client.getUrl()))) {
-                    clients.add(client);
-                }
+                addIfUnique(clients, extractRestTemplateCall(n));
             } else if (scopeName.contains("webClient")) {
-                var client = extractWebClientCall(n);
-
-                //TODO avoid duplication
-                if (client != null && client.getUrl() != null && clients.stream()
-                        .noneMatch(consumer -> consumer.getUrl().equals(client.getUrl()))) {
-                    clients.add(client);
-                }
+                addIfUnique(clients, extractWebClientCall(n));
             }
         }
     }
 
-    private RestClient extractFeignClient(MethodDeclaration method, String baseUrl, String className) {
-        var annotationOptional = method.getAnnotations().getFirst();
+    private static final Set<String> MAPPING_ANNOTATIONS = Set.of(
+            "GetMapping", "PostMapping", "PutMapping", "DeleteMapping",
+            "PatchMapping", "RequestMapping"
+    );
 
-        if (annotationOptional.isPresent()) {
-            var url = extractPathFromAnnotation(annotationOptional.get());
+    private RestClient extractFeignClient(MethodDeclaration method, String baseUrl, String className) {
+        var mappingAnnotation = method.getAnnotations().stream()
+                .filter(a -> MAPPING_ANNOTATIONS.contains(a.getNameAsString()))
+                .findFirst();
+
+        if (mappingAnnotation.isPresent()) {
+            var url = extractPathFromAnnotation(mappingAnnotation.get());
 
             return new RestClient(baseUrl + url, className, dataHub.getFqn());
         }
@@ -133,6 +129,13 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
         }
 
         return null;
+    }
+
+    private static void addIfUnique(List<Consumer> clients, Consumer client) {
+        if (client != null && client.getUrl() != null
+                && clients.stream().noneMatch(c -> c.getUrl().equals(client.getUrl()))) {
+            clients.add(client);
+        }
     }
 
     private String extractWebClientUrl(MethodCallExpr call) {

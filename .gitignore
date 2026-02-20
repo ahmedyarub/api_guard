@@ -1,3 +1,33 @@
-.idea
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Static analysis
 .PVS-Studio
-target
+
+# Java / Maven
+target/
+*.class
+*.jar
+*.war
+dependency-reduced-pom.xml
+
+# C++ / CMake build artifacts
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+_CPack_Packages/
+*.zip
+
+# vcpkg
+vcpkg_installed/
+
+# OS files
+.DS_Store
+Thumbs.db
