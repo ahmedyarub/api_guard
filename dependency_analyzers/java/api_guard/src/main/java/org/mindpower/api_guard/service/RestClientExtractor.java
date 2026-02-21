@@ -47,7 +47,7 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
             return;
         }
 
-        var baseUrl = extractPathFromAnnotation(annotation.get());
+        var baseUrl = resolveProperty(extractPathFromAnnotation(annotation.get()));
 
         n.getMethods().forEach(method -> {
             var client = extractFeignClient(method, baseUrl, n.getFullyQualifiedName().orElse(n.getNameAsString()));
@@ -98,7 +98,7 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
 
         // Extract URL from first argument
         if (!call.getArguments().isEmpty()) {
-            url = extractPath(extractStringValue(call.getArgument(0)));
+            url = extractPath(resolveProperty(extractStringValue(call.getArgument(0))));
         }
 
         return new RestClient(url, call.getNameAsString(), dataHub.getFqn());
@@ -125,7 +125,7 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
         var url = extractWebClientUrl(call);
 
         if (url != null && !url.isEmpty()) {
-            return new RestClient(url, call.getNameAsString(), dataHub.getFqn());
+            return new RestClient(resolveProperty(url), call.getNameAsString(), dataHub.getFqn());
         }
 
         return null;
@@ -184,5 +184,48 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
         }
 
         return null;
+    }
+
+    private String resolveProperty(String url) {
+        if (url == null) {
+            return null;
+        }
+
+        String result = url;
+        int maxIterations = 10;
+        int iteration = 0;
+
+        while (result.contains("${") && iteration < maxIterations) {
+            int start = result.indexOf("${");
+            int end = result.indexOf("}", start);
+
+            if (end == -1) {
+                break;
+            }
+
+            String content = result.substring(start + 2, end);
+            String propertyKey = content;
+            String defaultValue = null;
+
+            int colonIndex = content.indexOf(":");
+            if (colonIndex != -1) {
+                propertyKey = content.substring(0, colonIndex);
+                defaultValue = content.substring(colonIndex + 1);
+            }
+
+            String propertyValue = dataHub.getProperties().get(propertyKey);
+            if (propertyValue == null) {
+                propertyValue = defaultValue;
+            }
+
+            if (propertyValue != null) {
+                result = result.replace("${" + content + "}", propertyValue);
+            } else {
+                break;
+            }
+            iteration++;
+        }
+
+        return result;
     }
 }

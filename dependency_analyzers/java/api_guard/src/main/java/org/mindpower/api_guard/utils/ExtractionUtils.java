@@ -27,7 +27,7 @@ public class ExtractionUtils {
         } else if (annotation instanceof NormalAnnotationExpr normal) {
             return normal.getPairs()
                     .stream()
-                    .filter(p -> p.getNameAsString().equals("value") || p.getNameAsString().equals("path"))
+                    .filter(p -> p.getNameAsString().equals("value") || p.getNameAsString().equals("path") || p.getNameAsString().equals("url"))
                     .findFirst()
                     .map(p -> extractStringValue(p.getValue()))
                     .orElse("");
