@@ -36,6 +36,18 @@ public class ExtractionUtils {
         return "";
     }
 
+    public static String getAttributeValue(AnnotationExpr annotation, String name) {
+        if (annotation instanceof NormalAnnotationExpr normal) {
+            return normal.getPairs()
+                    .stream()
+                    .filter(p -> p.getNameAsString().equals(name))
+                    .findFirst()
+                    .map(p -> extractStringValue(p.getValue()))
+                    .orElse(null);
+        }
+        return null;
+    }
+
     public static String extractStringValue(Expression expr) {
         if (expr instanceof StringLiteralExpr) {
             return ((StringLiteralExpr) expr).getValue();
