@@ -146,11 +146,11 @@ public class AnalysisService {
     }
 
     private Map<String, String> loadProperties(File serviceDir) {
-        Map<String, String> properties = new HashMap<>();
+        var properties = new HashMap<String, String>();
 
-        File appProps = new File(serviceDir, "src/main/resources/application.properties");
-        File appYaml = new File(serviceDir, "src/main/resources/application.yml");
-        File appYaml2 = new File(serviceDir, "src/main/resources/application.yaml");
+        var appProps = new File(serviceDir, "src/main/resources/application.properties");
+        var appYaml = new File(serviceDir, "src/main/resources/application.yml");
+        var appYaml2 = new File(serviceDir, "src/main/resources/application.yaml");
 
         if (appProps.exists()) {
             try (FileInputStream fis = new FileInputStream(appProps)) {
@@ -165,7 +165,7 @@ public class AnalysisService {
         }
 
         if (appYaml.exists() || appYaml2.exists()) {
-            File yamlFile = appYaml.exists() ? appYaml : appYaml2;
+            var yamlFile = appYaml.exists() ? appYaml : appYaml2;
             try (FileInputStream fis = new FileInputStream(yamlFile)) {
                 Map<String, Object> yamlMap = yamlParser.load(fis);
                 flattenYaml(yamlMap, "", properties);
