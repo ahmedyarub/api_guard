@@ -44,6 +44,8 @@ public class ExtractionUtils {
             if (value.isPresent()) {
                 return extractStringValue(value.get());
             }
+        } else if (expr instanceof BinaryExpr binary && binary.getOperator() == BinaryExpr.Operator.PLUS) {
+            return extractStringValue(binary.getLeft()) + extractStringValue(binary.getRight());
         }
 
         return "";
