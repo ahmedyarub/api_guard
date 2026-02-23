@@ -32,6 +32,7 @@ import java.util.Set;
 
 import static org.mindpower.api_guard.utils.ExtractionUtils.extractPathFromAnnotation;
 import static org.mindpower.api_guard.utils.ExtractionUtils.extractStringValue;
+import static org.mindpower.api_guard.utils.ExtractionUtils.getAttributeValue;
 
 @RequiredArgsConstructor
 public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
@@ -47,10 +48,37 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
             return;
         }
 
-        var baseUrl = extractPathFromAnnotation(annotation.get());
+        var feignClientAnn = annotation.get();
+        var urlAttr = resolveProperty(getAttributeValue(feignClientAnn, "url"));
+        var pathAttr = resolveProperty(getAttributeValue(feignClientAnn, "path"));
+
+        String baseUrl = "";
+        boolean foundSpecific = false;
+
+        if (urlAttr != null) {
+            foundSpecific = true;
+            baseUrl = extractPath(urlAttr);
+        }
+
+        if (pathAttr != null) {
+            foundSpecific = true;
+            if (baseUrl == null) baseUrl = "";
+            if (!baseUrl.isEmpty() && !baseUrl.endsWith("/") && !pathAttr.startsWith("/")) {
+                baseUrl += "/";
+            } else if (baseUrl.endsWith("/") && pathAttr.startsWith("/")) {
+                baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+            }
+            baseUrl += pathAttr;
+        }
+
+        if (!foundSpecific) {
+            baseUrl = resolveProperty(extractPathFromAnnotation(feignClientAnn));
+        }
+
+        final String finalBaseUrl = baseUrl;
 
         n.getMethods().forEach(method -> {
-            var client = extractFeignClient(method, baseUrl, n.getFullyQualifiedName().orElse(n.getNameAsString()));
+            var client = extractFeignClient(method, finalBaseUrl, n.getFullyQualifiedName().orElse(n.getNameAsString()));
 
             if (client != null) {
                 clients.add(client);
@@ -98,7 +126,7 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
 
         // Extract URL from first argument
         if (!call.getArguments().isEmpty()) {
-            url = extractPath(extractStringValue(call.getArgument(0)));
+            url = extractPath(resolveProperty(extractStringValue(call.getArgument(0))));
         }
 
         return new RestClient(url, call.getNameAsString(), dataHub.getFqn());
@@ -115,6 +143,8 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
 
             if (pathStart != -1) {
                 return fullUrl.substring(pathStart);
+            } else {
+                return "";
             }
         }
 
@@ -125,7 +155,7 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
         var url = extractWebClientUrl(call);
 
         if (url != null && !url.isEmpty()) {
-            return new RestClient(url, call.getNameAsString(), dataHub.getFqn());
+            return new RestClient(resolveProperty(url), call.getNameAsString(), dataHub.getFqn());
         }
 
         return null;
@@ -184,5 +214,48 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
         }
 
         return null;
+    }
+
+    private String resolveProperty(String url) {
+        if (url == null) {
+            return null;
+        }
+
+        String result = url;
+        int maxIterations = 10;
+        int iteration = 0;
+
+        while (result.contains("${") && iteration < maxIterations) {
+            int start = result.indexOf("${");
+            int end = result.indexOf("}", start);
+
+            if (end == -1) {
+                break;
+            }
+
+            String content = result.substring(start + 2, end);
+            String propertyKey = content;
+            String defaultValue = null;
+
+            int colonIndex = content.indexOf(":");
+            if (colonIndex != -1) {
+                propertyKey = content.substring(0, colonIndex);
+                defaultValue = content.substring(colonIndex + 1);
+            }
+
+            String propertyValue = dataHub.getProperties().get(propertyKey);
+            if (propertyValue == null) {
+                propertyValue = defaultValue;
+            }
+
+            if (propertyValue != null) {
+                result = result.replace("${" + content + "}", propertyValue);
+            } else {
+                break;
+            }
+            iteration++;
+        }
+
+        return result;
     }
 }
