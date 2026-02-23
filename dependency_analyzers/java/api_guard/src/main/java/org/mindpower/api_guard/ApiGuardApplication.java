@@ -47,7 +47,7 @@ public class ApiGuardApplication extends Application implements Runnable {
         if (Arrays.asList(args).contains("--cli")) {
             new CommandLine(new ApiGuardApplication()).execute(args);
         } else {
-            launch();
+            launch(args);
         }
     }
 
