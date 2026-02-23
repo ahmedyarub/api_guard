@@ -32,6 +32,7 @@ import java.util.Set;
 
 import static org.mindpower.api_guard.utils.ExtractionUtils.extractPathFromAnnotation;
 import static org.mindpower.api_guard.utils.ExtractionUtils.extractStringValue;
+import static org.mindpower.api_guard.utils.ExtractionUtils.getAttributeValue;
 
 @RequiredArgsConstructor
 public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
@@ -47,10 +48,37 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
             return;
         }
 
-        var baseUrl = resolveProperty(extractPathFromAnnotation(annotation.get()));
+        var feignClientAnn = annotation.get();
+        var urlAttr = resolveProperty(getAttributeValue(feignClientAnn, "url"));
+        var pathAttr = resolveProperty(getAttributeValue(feignClientAnn, "path"));
+
+        String baseUrl = "";
+        boolean foundSpecific = false;
+
+        if (urlAttr != null) {
+            foundSpecific = true;
+            baseUrl = extractPath(urlAttr);
+        }
+
+        if (pathAttr != null) {
+            foundSpecific = true;
+            if (baseUrl == null) baseUrl = "";
+            if (!baseUrl.isEmpty() && !baseUrl.endsWith("/") && !pathAttr.startsWith("/")) {
+                baseUrl += "/";
+            } else if (baseUrl.endsWith("/") && pathAttr.startsWith("/")) {
+                baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+            }
+            baseUrl += pathAttr;
+        }
+
+        if (!foundSpecific) {
+            baseUrl = resolveProperty(extractPathFromAnnotation(feignClientAnn));
+        }
+
+        final String finalBaseUrl = baseUrl;
 
         n.getMethods().forEach(method -> {
-            var client = extractFeignClient(method, baseUrl, n.getFullyQualifiedName().orElse(n.getNameAsString()));
+            var client = extractFeignClient(method, finalBaseUrl, n.getFullyQualifiedName().orElse(n.getNameAsString()));
 
             if (client != null) {
                 clients.add(client);
@@ -115,6 +143,8 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
 
             if (pathStart != -1) {
                 return fullUrl.substring(pathStart);
+            } else {
+                return "";
             }
         }
 
