@@ -84,20 +84,11 @@ public class AnalysisService {
 
                 dataHub.setGroupId(xpath.evaluate("/project/groupId", doc));
                 dataHub.setArtifactId(xpath.evaluate("/project/artifactId", doc));
-                dataHub.setProperties(loadProperties(f.getParentFile()));
 
-                var serviceName = dataHub.getProperties().get("spring.application.name");
-                dataHub.setName((serviceName == null || serviceName.isEmpty()) ? dataHub.getArtifactId() : serviceName);
+                var serviceName = getProperty(f.getParentFile(), Collections.singletonList("spring.application.name"));
+                dataHub.setName(serviceName == null ? dataHub.getArtifactId() : serviceName);
 
-                var contextPath = dataHub.getProperties().get("server.servlet.context-path");
-                if (contextPath == null || contextPath.isEmpty()) {
-                    contextPath = dataHub.getProperties().get("spring.webflux.base-path");
-                }
-                if (contextPath == null || contextPath.isEmpty()) {
-                    contextPath = "/" + f.getParentFile().getName();
-                }
-                dataHub.setContextPath(contextPath);
-
+                dataHub.setContextPath(getProperty(f.getParentFile(), List.of("server.servlet.context-path", "spring.webflux.base-path")));
                 dataHub.setRootFolder(f.getParent());
 
                 parseJavaFile(f.getParent(), dataHub);
@@ -145,52 +136,63 @@ public class AnalysisService {
         return map;
     }
 
-    private Map<String, String> loadProperties(File serviceDir) {
-        var properties = new HashMap<String, String>();
-
-        var appProps = new File(serviceDir, "src/main/resources/application.properties");
-        var appYaml = new File(serviceDir, "src/main/resources/application.yml");
-        var appYaml2 = new File(serviceDir, "src/main/resources/application.yaml");
-
-        if (appProps.exists()) {
-            try (FileInputStream fis = new FileInputStream(appProps)) {
-                Properties props = new Properties();
-                props.load(fis);
-                for (String key : props.stringPropertyNames()) {
-                    properties.put(key, props.getProperty(key));
-                }
-            } catch (IOException e) {
-                log.severe(String.format("Error reading application.properties: %s", e.getMessage()));
-            }
-        }
-
-        if (appYaml.exists() || appYaml2.exists()) {
-            var yamlFile = appYaml.exists() ? appYaml : appYaml2;
-            try (FileInputStream fis = new FileInputStream(yamlFile)) {
-                Map<String, Object> yamlMap = yamlParser.load(fis);
-                flattenYaml(yamlMap, "", properties);
-            } catch (IOException e) {
-                log.severe(String.format("Error reading application.yml: %s", e.getMessage()));
-            }
-        }
-
-        return properties;
-    }
-
     @SuppressWarnings("unchecked")
-    private void flattenYaml(Map<String, Object> source, String prefix, Map<String, String> target) {
-        if (source == null) return;
+    private String getProperty(File serviceDir, List<String> propertyPaths) {
+        // Try to get from application properties
+        File appProps = new File(serviceDir, "src/main/resources/application.properties");
+        File appYaml = new File(serviceDir, "src/main/resources/application.yml");
+        File appYaml2 = new File(serviceDir, "src/main/resources/application.yaml");
 
-        for (Map.Entry<String, Object> entry : source.entrySet()) {
-            String key = prefix.isEmpty() ? entry.getKey() : prefix + "." + entry.getKey();
-            Object value = entry.getValue();
+        try {
+            if (appProps.exists()) {
+                try (FileInputStream fis = new FileInputStream(appProps)) {
+                    Properties props = new Properties();
 
-            if (value instanceof Map) {
-                flattenYaml((Map<String, Object>) value, key, target);
-            } else if (value != null) {
-                target.put(key, value.toString());
+                    props.load(fis);
+
+                    for (var propertyPath : propertyPaths) {
+                        var name = props.getProperty(propertyPath);
+                        if (name != null && !name.isEmpty()) {
+                            return name;
+                        }
+                    }
+                }
             }
+
+            if (appYaml.exists() || appYaml2.exists()) {
+                File yamlFile = appYaml.exists() ? appYaml : appYaml2;
+
+                try (FileInputStream fis = new FileInputStream(yamlFile)) {
+                    Object root = yamlParser.load(fis);
+
+                    for (var propertyPath : propertyPaths) {
+                        Object current = root;
+                        String[] parts = propertyPath.split("\\.");
+                        boolean resolved = true;
+
+                        for (String part : parts) {
+                            if (current instanceof Map) {
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> map = (Map<String, Object>) current;
+                                current = map.get(part);
+                            } else {
+                                resolved = false;
+                                break;
+                            }
+                        }
+
+                        if (resolved && current instanceof String value && !value.isEmpty()) {
+                            return value;
+                        }
+                    }
+                }
+            }
+        } catch (IOException e) {
+            log.severe(String.format("Error reading application config: %s", e.getMessage()));
         }
+
+        // Fallback to directory name
+        return "/" + serviceDir.getName();
     }
 
     void parseJavaFile(String root, DataHub dataHub) {
