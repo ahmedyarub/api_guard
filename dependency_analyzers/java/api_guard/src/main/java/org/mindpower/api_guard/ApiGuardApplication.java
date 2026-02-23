@@ -25,6 +25,7 @@ import org.mindpower.api_guard.service.AnalysisService;
 import picocli.CommandLine;
 import tools.jackson.databind.ObjectMapper;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
@@ -36,18 +37,39 @@ public class ApiGuardApplication extends Application implements Runnable {
     @CommandLine.Option(names = {"--path"}, description = "Root path of projects")
     String projectsPath;
 
+    @CommandLine.Option(names = {"--open"}, description = "Project paths to open")
+    String[] openPaths;
+
+    @CommandLine.Option(names = {"--analyze"}, description = "Analyze immediately")
+    boolean analyze;
+
     public static void main(String[] args) {
         if (Arrays.asList(args).contains("--cli")) {
             new CommandLine(new ApiGuardApplication()).execute(args);
         } else {
-            launch();
+            launch(args);
         }
     }
 
     @Override
     public void start(Stage stage) throws IOException {
+        var args = getParameters().getRaw().toArray(new String[0]);
+        new CommandLine(this).parseArgs(args);
+
         var fxmlLoader = new FXMLLoader(ApiGuardApplication.class.getResource("analysis-view.fxml"));
         var scene = new Scene(fxmlLoader.load(), 800, 600);
+
+        AnalysisController controller = fxmlLoader.getController();
+
+        if (openPaths != null) {
+            for (String path : openPaths) {
+                controller.addProject(new File(path));
+            }
+        }
+
+        if (analyze) {
+            controller.performAnalysis();
+        }
 
         stage.setTitle("API Guard");
         stage.setScene(scene);

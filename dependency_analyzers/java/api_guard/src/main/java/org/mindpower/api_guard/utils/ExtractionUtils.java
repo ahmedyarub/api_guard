@@ -27,25 +27,13 @@ public class ExtractionUtils {
         } else if (annotation instanceof NormalAnnotationExpr normal) {
             return normal.getPairs()
                     .stream()
-                    .filter(p -> p.getNameAsString().equals("value") || p.getNameAsString().equals("path") || p.getNameAsString().equals("url"))
+                    .filter(p -> p.getNameAsString().equals("value") || p.getNameAsString().equals("path"))
                     .findFirst()
                     .map(p -> extractStringValue(p.getValue()))
                     .orElse("");
         }
 
         return "";
-    }
-
-    public static String getAttributeValue(AnnotationExpr annotation, String name) {
-        if (annotation instanceof NormalAnnotationExpr normal) {
-            return normal.getPairs()
-                    .stream()
-                    .filter(p -> p.getNameAsString().equals(name))
-                    .findFirst()
-                    .map(p -> extractStringValue(p.getValue()))
-                    .orElse(null);
-        }
-        return null;
     }
 
     public static String extractStringValue(Expression expr) {

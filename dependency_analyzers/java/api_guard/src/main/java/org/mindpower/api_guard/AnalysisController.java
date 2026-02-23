@@ -56,7 +56,7 @@ public class AnalysisController {
     private ListView<DataHub> projectsList;
 
     @FXML
-    public void onOpenButtonClick(ActionEvent actionEvent) throws XPathExpressionException, ParserConfigurationException, IOException, SAXException {
+    public void onOpenButtonClick(ActionEvent actionEvent) {
         var directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle("Select the root folder of your projects");
 
@@ -66,13 +66,23 @@ public class AnalysisController {
 
         if (selectedDirectory != null) {
             saveLastDirectory(selectedDirectory);
+            addProject(selectedDirectory);
+        }
+    }
 
-            analysisService.addFolder(Path.of(selectedDirectory.getAbsolutePath()));
-
-            for (var dataHub : analysisService.getDataHubs()) {
-                projectsList.getItems().add(dataHub);
+    public void addProject(File directory) {
+        if (directory != null && directory.exists() && directory.isDirectory()) {
+            try {
+                analysisService.addFolder(Path.of(directory.getAbsolutePath()));
+                projectsList.getItems().setAll(analysisService.getDataHubs());
+            } catch (Exception e) {
+                log.severe(String.format("Error adding project %s: %s", directory.getName(), e.getMessage()));
             }
         }
+    }
+
+    public void performAnalysis() {
+        onAnalyzeButtonClick();
     }
 
     @FXML

@@ -22,10 +22,8 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 @Data
@@ -51,7 +49,6 @@ public class DataHub {
     Set<Link> links = new HashSet<>();
     private String name;
     private String port;
-    private Map<String, String> properties = new HashMap<>();
 
     public String getFqn() {
         return groupId + "." + artifactId;
