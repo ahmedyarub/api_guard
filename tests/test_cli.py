@@ -48,8 +48,6 @@ def test_integration_cli():
         pytest.fail("Maven build failed.")
 
     # Run Command
-    # Use the shade jar or just the classes if possible, but shade is better for "fat jar" simulation
-    # The previous plan mentioned 'target/api_guard-1.0-SNAPSHOT.jar'
     jar_path = os.path.join(api_guard_dir, 'target', 'api_guard-1.0-SNAPSHOT.jar')
 
     # We must use the Launcher to avoid JavaFX module issues on the classpath
@@ -79,29 +77,64 @@ def test_integration_cli():
         print("Invalid JSON Output:", run_process.stdout)
         pytest.fail("Output is not valid JSON")
 
-    # Verify expected services
-    # Based on the file listing:
-    # caller_feign_client
-    # caller_rest_template
-    # caller_web_client
-    # responder_mvc_annotation
-    # responder_mvc_router
-    # responder_webflux
+    # Helper to find service by artifactId or name
+    def get_service(services, name_or_artifact):
+        for s in services:
+            if s.get('artifactId') == name_or_artifact or s.get('name') == name_or_artifact or s.get('name') == f"/{name_or_artifact}":
+                return s
+        return None
 
-    # The tool seems to use the directory name (prefixed with /) if it can't find spring application name property
+    # Verify expected services and links based on the user provided JSON
 
-    service_names = [s.get('name') for s in data]
-    print(f"Found services: {service_names}")
+    # 1. caller_feign_client -> responder_mvc_annotation
+    caller_feign = get_service(data, "caller_feign_client")
+    assert caller_feign, "caller_feign_client not found"
 
-    expected = {
-        '/caller_feign_client',
-        '/caller_rest_template',
-        '/caller_web_client',
-        '/responder_mvc_annotation',
-        '/responder_mvc_router',
-        '/responder_webflux'
-    }
-    found = set(service_names)
+    links = caller_feign.get("links", [])
+    found_link = False
+    for link in links:
+        if "responder_mvc_annotation" in link.get("to", ""):
+             # Verify details
+             consumer_url = link.get("consumer", {}).get("url")
+             producer_url = link.get("producer", {}).get("url")
+             if consumer_url == "/responder_mvc_annotation/annotation/lower/{param}" and \
+                producer_url == "/annotation/lower/{param}":
+                 found_link = True
+                 break
+    assert found_link, "Link from caller_feign_client to responder_mvc_annotation not found or incorrect"
 
-    missing = expected - found
-    assert not missing, f"Missing expected services: {missing}"
+    # 2. caller_rest_template -> responder_mvc_router
+    caller_rest = get_service(data, "caller_rest_template")
+    assert caller_rest, "caller_rest_template not found"
+
+    links = caller_rest.get("links", [])
+    found_link = False
+    for link in links:
+        if "responder_mvc_router" in link.get("to", ""):
+             # Verify details
+             consumer_url = link.get("consumer", {}).get("url")
+             producer_url = link.get("producer", {}).get("url")
+             if consumer_url == "/responder_mvc_router/router/lower/{param}" and \
+                producer_url == "/router/lower/{param}":
+                 found_link = True
+                 break
+    assert found_link, "Link from caller_rest_template to responder_mvc_router not found or incorrect"
+
+    # 3. caller_web_client -> responder_webflux
+    caller_web = get_service(data, "caller_web_client")
+    assert caller_web, "caller_web_client not found"
+
+    links = caller_web.get("links", [])
+    found_link = False
+    for link in links:
+        if "responder_webflux" in link.get("to", ""):
+             # Verify details
+             consumer_url = link.get("consumer", {}).get("url")
+             producer_url = link.get("producer", {}).get("url")
+             if consumer_url == "/responder_webflux/annotation/lower/{param}" and \
+                producer_url == "/annotation/lower/{param}":
+                 found_link = True
+                 break
+    assert found_link, "Link from caller_web_client to responder_webflux not found or incorrect"
+
+    print("All expected services and links verified successfully.")
