@@ -178,6 +178,7 @@
                         --add-opens org.mindpower.api_guard/org.mindpower.api_guard.models=ALL-UNNAMED
                         --add-opens org.mindpower.api_guard/org.mindpower.api_guard.service=ALL-UNNAMED
                         --add-opens org.mindpower.api_guard/org.mindpower.api_guard.utils=ALL-UNNAMED
+                        -Dnet.bytebuddy.experimental=true
                     </argLine>
                 </configuration>
             </plugin>
