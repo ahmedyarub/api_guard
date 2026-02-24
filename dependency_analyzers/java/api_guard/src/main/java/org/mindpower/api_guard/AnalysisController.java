@@ -44,7 +44,16 @@ import java.util.prefs.Preferences;
 public class AnalysisController {
     private static final String LAST_DIRECTORY_KEY = "lastSelectedDirectory";
     private final Preferences prefs = Preferences.userNodeForPackage(ApiGuardApplication.class);
-    private final AnalysisService analysisService = new AnalysisService();
+    private AnalysisService analysisService = new AnalysisService();
+
+    // Default constructor for FXML
+    public AnalysisController() {
+    }
+
+    // Constructor for testing
+    public AnalysisController(AnalysisService analysisService) {
+        this.analysisService = analysisService;
+    }
 
     @FXML
     private Button analyzeButton;
@@ -57,12 +66,7 @@ public class AnalysisController {
 
     @FXML
     public void onOpenButtonClick(ActionEvent actionEvent) {
-        var directoryChooser = new DirectoryChooser();
-        directoryChooser.setTitle("Select the root folder of your projects");
-
-        directoryChooser.setInitialDirectory(getLastDirectory());
-
-        var selectedDirectory = directoryChooser.showDialog(null);
+        var selectedDirectory = chooseDirectory();
 
         if (selectedDirectory != null) {
             saveLastDirectory(selectedDirectory);
@@ -70,11 +74,22 @@ public class AnalysisController {
         }
     }
 
+    protected File chooseDirectory() {
+        var directoryChooser = new DirectoryChooser();
+        directoryChooser.setTitle("Select the root folder of your projects");
+
+        directoryChooser.setInitialDirectory(getLastDirectory());
+
+        return directoryChooser.showDialog(null);
+    }
+
     public void addProject(File directory) {
         if (directory != null && directory.exists() && directory.isDirectory()) {
             try {
                 analysisService.addFolder(Path.of(directory.getAbsolutePath()));
-                projectsList.getItems().setAll(analysisService.getDataHubs());
+                if (projectsList != null) {
+                    projectsList.getItems().setAll(analysisService.getDataHubs());
+                }
             } catch (Exception e) {
                 log.severe(String.format("Error adding project %s: %s", directory.getName(), e.getMessage()));
             }
@@ -92,7 +107,7 @@ public class AnalysisController {
         drawGraph();
     }
 
-    private void drawGraph() {
+    protected void drawGraph() {
         var g = convertToGraph();
 
         var initialPlacement = new SmartCircularSortedPlacementStrategy();
@@ -131,7 +146,7 @@ public class AnalysisController {
         return dir.exists() && dir.isDirectory() ? dir : new File(System.getProperty("user.home"));
     }
 
-    private void saveLastDirectory(File directory) {
+    protected void saveLastDirectory(File directory) {
         if (directory != null) {
             // If it's a file, get its parent directory
             String path = directory.isDirectory() ? directory.getAbsolutePath() : directory.getParentFile()
