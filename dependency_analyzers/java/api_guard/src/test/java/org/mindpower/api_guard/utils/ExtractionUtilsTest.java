@@ -43,4 +43,13 @@ class ExtractionUtilsTest {
         AnnotationExpr annotation = StaticJavaParser.parseAnnotation("@GetMapping(path = \"/api\" + \"/v1\")");
         assertEquals("/api/v1", ExtractionUtils.extractPathFromAnnotation(annotation));
     }
+
+    @Test
+    void testExtractPathFromUrl() {
+        assertEquals("/api/v1", ExtractionUtils.extractPathFromUrl("http://localhost:8080/api/v1"));
+        assertEquals("/api/v1", ExtractionUtils.extractPathFromUrl("https://example.com/api/v1"));
+        assertEquals("/api/v1", ExtractionUtils.extractPathFromUrl("/api/v1"));
+        assertEquals(null, ExtractionUtils.extractPathFromUrl(null));
+        assertEquals("", ExtractionUtils.extractPathFromUrl(""));
+    }
 }
