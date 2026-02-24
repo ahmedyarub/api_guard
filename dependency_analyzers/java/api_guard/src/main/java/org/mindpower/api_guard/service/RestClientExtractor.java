@@ -30,8 +30,7 @@ import org.mindpower.api_guard.models.RestClient;
 import java.util.List;
 import java.util.Set;
 
-import static org.mindpower.api_guard.utils.ExtractionUtils.extractPathFromAnnotation;
-import static org.mindpower.api_guard.utils.ExtractionUtils.extractStringValue;
+import static org.mindpower.api_guard.utils.ExtractionUtils.*;
 
 @RequiredArgsConstructor
 public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
@@ -98,27 +97,10 @@ public class RestClientExtractor extends VoidVisitorAdapter<List<Consumer>> {
 
         // Extract URL from first argument
         if (!call.getArguments().isEmpty()) {
-            url = extractPath(extractStringValue(call.getArgument(0)));
+            url = extractPathFromUrl(extractStringValue(call.getArgument(0)));
         }
 
         return new RestClient(url, call.getNameAsString(), dataHub.getFqn());
-    }
-
-    public String extractPath(String fullUrl) {
-        if (fullUrl == null)
-            return null;
-
-        int protocolEnd = fullUrl.indexOf("://");
-
-        if (protocolEnd != -1) {
-            int pathStart = fullUrl.indexOf("/", protocolEnd + 3);
-
-            if (pathStart != -1) {
-                return fullUrl.substring(pathStart);
-            }
-        }
-
-        return fullUrl;
     }
 
     private RestClient extractWebClientCall(MethodCallExpr call) {

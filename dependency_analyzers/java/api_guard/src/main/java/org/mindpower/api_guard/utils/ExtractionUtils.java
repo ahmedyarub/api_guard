@@ -50,4 +50,21 @@ public class ExtractionUtils {
 
         return "";
     }
+
+    public static String extractPathFromUrl(String fullUrl) {
+        if (fullUrl == null)
+            return null;
+
+        int protocolEnd = fullUrl.indexOf("://");
+
+        if (protocolEnd != -1) {
+            int pathStart = fullUrl.indexOf("/", protocolEnd + 3);
+
+            if (pathStart != -1) {
+                return fullUrl.substring(pathStart);
+            }
+        }
+
+        return fullUrl;
+    }
 }
