@@ -170,6 +170,19 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+                <configuration>
+                    <argLine>
+                        --add-opens org.mindpower.api_guard/org.mindpower.api_guard=ALL-UNNAMED
+                        --add-opens org.mindpower.api_guard/org.mindpower.api_guard.models=ALL-UNNAMED
+                        --add-opens org.mindpower.api_guard/org.mindpower.api_guard.service=ALL-UNNAMED
+                        --add-opens org.mindpower.api_guard/org.mindpower.api_guard.utils=ALL-UNNAMED
+                    </argLine>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.5.0</version>
                 <configuration>
