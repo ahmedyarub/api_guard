@@ -1,6 +1,7 @@
 import pytest
 import os
 import subprocess
+import platform
 
 def test_integration_cli():
     # Setup paths
@@ -18,16 +19,22 @@ def test_integration_cli():
         check=True
     )
 
+    # Determine Maven wrapper script
+    if platform.system() == "Windows":
+        mvnw_cmd = os.path.join(api_guard_dir, "mvnw.cmd")
+    else:
+        mvnw_cmd = os.path.join(api_guard_dir, "mvnw")
+
     # Build Command
     build_cmd = [
-        "./mvnw", "clean", "package",
+        mvnw_cmd, "clean", "package",
         "-DskipTests",
         "-Dmaven.compiler.source=21",
         "-Dmaven.compiler.target=21",
         "-Djavafx.version=21"
     ]
 
-    print(f"Building in {api_guard_dir}...")
+    print(f"Building in {api_guard_dir} with command: {build_cmd}")
     build_process = subprocess.run(
         build_cmd,
         cwd=api_guard_dir,
