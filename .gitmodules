@@ -1,0 +1,4 @@
+[submodule "dependency_analyzers/java/JavaFXSmartGraph"]
+	path = dependency_analyzers/java/JavaFXSmartGraph
+	url = https://github.com/ahmedyarub/JavaFXSmartGraph
+	branch = ay/update_dependencies
