@@ -2,3 +2,6 @@
 	path = dependency_analyzers/java/JavaFXSmartGraph
 	url = https://github.com/ahmedyarub/JavaFXSmartGraph
 	branch = ay/update_dependencies
+[submodule "samples/distributed-app"]
+	path = samples/distributed-app
+	url = https://github.com/ahmedyarub/distributed-app/
