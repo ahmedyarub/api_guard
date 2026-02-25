@@ -1,0 +1,181 @@
+#include <iostream>
+#include <boost/graph/topological_sort.hpp>
+#include "cxxopts.hpp"
+#include <deque>
+#include <fstream>
+
+#include "dependency_scanner/dependency_scanner.h"
+#include "process_handler/process_handler.h"
+
+namespace fs = std::filesystem;
+
+void adaptTrapFiles(const Graph& g, const Vertex& cons_dep, const std::string& dbs_root);
+
+int main(const int argc, char* argv[])
+{
+    cxxopts::Options options("API Guard", "Enabling cross-domain static analysis");
+
+    options.add_options()
+        ("projects_path", "Root path of projects", cxxopts::value<std::string>())
+        ("dbs_path", "Root path of databases", cxxopts::value<std::string>())
+        ("h,help", "Print usage");
+
+    const auto argsResult = options.parse(argc, argv);
+
+    if (argsResult.count("help") || !argsResult.count("projects_path") || !argsResult.count("dbs_path"))
+    {
+        std::cout << options.help() << std::endl;
+
+        return 1;
+    }
+
+    const auto projects_root = argsResult["projects_path"].as<std::string>();
+    const auto dbs_root = argsResult["dbs_path"].as<std::string>();
+
+    auto codeqlExePath = getExecutablePath("codeql");
+    auto codeqlRoot = codeqlExePath.parent_path();
+
+    DependencyScanner scanner;
+    std::cout << "Scanning root folder for projects" << std::endl;
+    auto g = scanner.scanDependencies(projects_root);
+
+    if (fs::exists(dbs_root))
+    {
+        std::cout << std::endl << "Cleaning up databases folder" << std::endl;
+        fs::remove_all(dbs_root);
+    }
+
+    fs::create_directory(dbs_root);
+
+    std::deque<Vertex> deps;
+    topological_sort(g, std::front_inserter(deps));
+    std::string verbosityFlag = "--verbosity=warnings";
+
+    for (const auto dep : deps)
+    {
+        const auto& dh = g[dep];
+
+        std::cout << std::endl << "Creating database for " << dh.getFqn() << std::endl;
+
+        std::string dbDir = dbs_root + "/" + dh.artifactId;
+
+        runProcess(codeqlExePath, {
+                       "database", "init",
+                       "-s=" + dh.rootFolder,
+                       "-l=java",
+                       "--overwrite",
+                       verbosityFlag,
+                       "--",
+                       dbDir
+                   });
+
+        std::cout << "Parsing code" << std::endl;
+
+        _putenv("CODEQL_EXTRACTOR_JAVA_OPTION_TRAP_COMPRESSION=NONE");
+
+        runProcess(codeqlExePath, {
+                       "database", "trace-command",
+                       "--working-dir=" + dh.rootFolder, "--index-traceless-dbs", "--no-db-cluster",
+                       verbosityFlag, "--", dbDir,
+                       codeqlRoot.generic_string() + "/java/tools/autobuild.cmd"
+                   });
+
+        std::cout << "Adapting Trap files" << std::endl;
+        adaptTrapFiles(g, dep, dbs_root);
+
+        std::cout << "Finalizing database" << std::endl;
+        runProcess(codeqlExePath, {
+                       "database", "finalize",
+                       "--no-cleanup",
+                       "--no-db-cluster",
+                       verbosityFlag,
+                       "--",
+                       dbs_root + "/" + dh.artifactId
+                   });
+
+        if (const std::string result_file = dbs_root + "/" + dh.artifactId + "/codeql_result.sarif";
+            fs::exists(result_file))
+        {
+            fs::remove(result_file);
+        }
+
+        std::cout << "Analyzing project" << std::endl;
+        runProcess(codeqlExePath, {
+                       "database", "analyze",
+                       dbs_root + "/" + dh.artifactId,
+                       "--format=sarif-latest",
+                       "--output=" + dh.rootFolder + "/codeql_result.sarif",
+                       "--rerun",
+                       "--threads=0",
+                       "java-lgtm-full",
+                       "--no-sarif-minify",
+                       "--sarif-add-snippets",
+                       verbosityFlag,
+                   });
+    }
+
+    return 0;
+}
+
+void adaptTrapFiles(const Graph& g, const Vertex& cons_dep, const std::string& dbs_root)
+{
+    auto dh = g[cons_dep];
+    std::string consDbRoot = dbs_root + "/" + dh.artifactId;
+    std::string normalizedConsRoot = dh.rootFolder;
+    std::ranges::replace(normalizedConsRoot, ':', '_');
+
+    for (auto scanRoot = std::format("{}/trap/java/{}", consDbRoot, normalizedConsRoot); const auto& entry :
+         fs::recursive_directory_iterator(scanRoot))
+    {
+        if (entry.is_regular_file() && entry.path().extension() == ".trap")
+        {
+            const std::string trap_file = entry.path().string();
+            std::cout << "Processing Trap file: " << trap_file << '\n';
+
+            std::ifstream in(trap_file);
+            std::string contents((std::istreambuf_iterator(in)), std::istreambuf_iterator<char>());
+            in.close();
+
+            for (const auto& [from, to] : dh.links)
+            {
+                size_t pos = 0;
+                auto consumerClass = from.clientClass;
+                auto producerClass = to.controller;
+
+                while ((pos = contents.find(consumerClass, pos)) != std::string::npos)
+                {
+                    std::cout << "Replacing " << consumerClass << " with " << producerClass << '\n';
+                    contents.replace(pos, consumerClass.length(), producerClass);
+                    pos += producerClass.length();
+                }
+            }
+
+            std::ofstream out(trap_file);
+            out << contents;
+            out.close();
+        }
+    }
+
+    graph_traits<Graph>::edge_iterator ei, ei_end;
+    for (tie(ei, ei_end) = edges(g); ei != ei_end; ++ei)
+    {
+        if (target(*ei, g) == cons_dep)
+        {
+            auto prod_dep = g[source(*ei, g)];
+            std::string prodDbRoot = dbs_root + "/" + prod_dep.artifactId;
+            std::string normalizedProdRoot = prod_dep.rootFolder;
+            std::ranges::replace(normalizedProdRoot, ':', '_');
+
+            fs::copy(std::format("{}/trap/java/{}", prodDbRoot, normalizedProdRoot),
+                     std::format("{}/trap/java/{}", consDbRoot, normalizedProdRoot),
+                     fs::copy_options::recursive);
+
+            std::string prodClassesFolder = prod_dep.getFqn();
+            std::ranges::replace(prodClassesFolder, '.', '/');
+
+            fs::copy(std::format("{}/trap/java/classes/{}", prodDbRoot, prodClassesFolder),
+                     std::format("{}/trap/java/classes/{}", consDbRoot, prodClassesFolder),
+                     fs::copy_options::recursive);
+        }
+    }
+}

@@ -1,0 +1,21 @@
+cmake_minimum_required(VERSION 3.29)
+project(CodeQLTool)
+
+set(CMAKE_CXX_STANDARD 23)
+
+find_package(Boost REQUIRED NO_MODULE COMPONENTS graph process)
+find_package(cxxopts CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+
+add_executable(api_guard
+        main.cpp
+        dependency_scanner/dependency_scanner.cpp
+        process_handler/process_handler.cpp)
+
+target_link_libraries(api_guard PRIVATE Boost::graph)
+target_link_libraries(api_guard PRIVATE Boost::process)
+target_link_libraries(api_guard PRIVATE cxxopts::cxxopts)
+target_link_libraries(api_guard PRIVATE nlohmann_json::nlohmann_json)
+
+target_compile_definitions(api_guard PRIVATE WIN32_LEAN_AND_MEAN)
+target_compile_definitions(api_guard PRIVATE _WIN32_WINNT=0x0601)
