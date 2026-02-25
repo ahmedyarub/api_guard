@@ -1,3 +1,4 @@
+![header.png](header.png)
 # API Guard - Community Edition
 
 Cross-domain static analysis for Java microservices. API Guard discovers REST endpoints and client calls across Spring Boot services, links them into a dependency graph, and enables [CodeQL](https://codeql.github.com/) to analyze vulnerabilities that span service boundaries.
