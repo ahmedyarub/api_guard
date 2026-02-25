@@ -1,0 +1,47 @@
+# Jules Configuration
+
+This file contains instructions and context for the Jules agent working on the API Guard repository.
+
+## Project Context
+API Guard is a cross-domain static analysis tool for Java microservices. It combines a Java analyzer (Spring Boot parsing) with a C++ CLI orchestrator and an MCP server for AI integration.
+
+## Tech Stack
+- **Java**: JDK 25 (Required for `dependency_analyzers/java/api_guard`).
+- **JavaFX**: Version 26-ea (or compatible). Must be on the module path.
+- **C++**: C++23 Standard. Uses Boost (Process, Graph, DLL), `nlohmann/json`, `cxxopts`.
+- **Build System**:
+  - Java: Maven (`mvn`).
+  - C++: CMake (`cmake`) with `vcpkg`.
+- **Python**: Used for the MCP Server (`server.py`) and integration tests (`pytest`).
+
+## Key Tasks & Commands
+
+### 1. Building the Java Analyzer
+Located in `dependency_analyzers/java/api_guard`.
+```bash
+cd dependency_analyzers/java/api_guard
+mvn package
+```
+*Note: Ensure `smartgraph` dependency is installed locally first if not in central repo.*
+
+### 2. Building the C++ CLI
+Located in `cli/api_guard`.
+```bash
+cd cli/api_guard
+cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+cmake --build build
+```
+
+### 3. Running Tests
+- **Python Integration Tests**:
+  ```bash
+  PYTHONPATH=. pytest
+  ```
+- **Java Unit Tests**:
+  Run via Maven. Note that some tests may require specific VM options for Java 25 (e.g., `--add-opens`).
+
+## Known Issues / "Gotchas"
+
+- **`server.py` Hardcoded Paths**: The `server.py` file currently contains hardcoded paths in the `__main__` block (e.g., `E:/java/...`). Be aware of this when running or modifying the server. Do not modify these unless explicitly instructed to fix the configuration mechanism.
+- **JavaFX Module Path**: Running the Java analyzer (JAR) requires setting the module path to the JavaFX SDK.
+- **Submodules**: The project uses git submodules (`samples/distributed-app`, `dependency_analyzers/java/JavaFXSmartGraph`). Ensure they are initialized (`git submodule update --init --recursive`) before running tests that depend on them.
