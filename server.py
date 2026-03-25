@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import platform
+import shutil
 import subprocess
 from typing import Dict, Any
 from typing import List
@@ -76,9 +77,14 @@ def run_executable(executable_path: str, args: list) -> Dict[str, Any]:
     if platform.system() == "Windows" and not executable_path.endswith(".exe"):
         executable_path += ".exe"
 
-    # 2. Check if file exists before running to avoid vague errors
-    if not os.path.exists(executable_path):
+    # 2. Check if executable exists (handles both absolute paths and PATH-resolved commands)
+    resolved_path = shutil.which(executable_path)
+    if resolved_path is None and not os.path.exists(executable_path):
         raise FileNotFoundError(f"Executable not found at: {executable_path}")
+    
+    # Use resolved path if available (for PATH commands like "java")
+    if resolved_path:
+        executable_path = resolved_path
 
     try:
         # 3. Run the process safely
