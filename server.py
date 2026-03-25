@@ -104,17 +104,27 @@ def run_executable(executable_path: str, args: list) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
+    java_path = os.environ.get("JAVA_PATH", "java")
+    javafx_lib_path = os.environ.get("JAVAFX_LIB_PATH")
+    if not javafx_lib_path:
+        raise ValueError("JAVAFX_LIB_PATH environment variable is required.")
+
+    api_guard_jar_path = os.environ.get("API_GUARD_JAR_PATH", "dependency_analyzers/java/api_guard/target/api_guard-1.0-SNAPSHOT.jar")
+    projects_path = os.environ.get("PROJECTS_PATH")
+    if not projects_path:
+        raise ValueError("PROJECTS_PATH environment variable is required.")
+
     DATA = run_executable(
-        r"C:\Users\FiFo\.jdks\corretto-25.0.1\bin\java.exe",
+        java_path,
         [
             "--module-path",
-            "E:/javafx-sdk-26/lib",
+            javafx_lib_path,
             "--add-modules",
             "javafx.controls",
             "-jar",
-            r"E:\java\api_guard\dependency_analyzers\java\api_guard\target\api_guard-1.0-SNAPSHOT.jar",
+            api_guard_jar_path,
             "--cli",
-            "--path=E:/java/multi-micro/microservices/"
+            f"--path={projects_path}"
         ]
     )
     mcp.run()
