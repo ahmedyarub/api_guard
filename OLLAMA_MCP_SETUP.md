@@ -38,21 +38,48 @@ python server.py
 ```
 *Note: Ensure `mcp` is installed (`pip install mcp`).*
 
-## 2. Configure Ollama with an MCP Client
+## 2. Configure Ollama with an MCP CLI Bridge
 
-Currently, Ollama itself does not natively act as an MCP Client. To bridge Ollama with the MCP Server (`server.py`), you need an intermediary tool or client that supports both.
+Ollama itself does not natively act as an MCP Client. To bridge Ollama with the MCP Server (`server.py`) so it can use the tools (like `list_services`), you need an intermediary CLI tool that handles the LLM function-calling routing.
 
-A common approach is to use a CLI tool like `mcp-cli` or integrate it through a framework like LangChain or LlamaIndex.
+We will use the official `@modelcontextprotocol/inspector` as a quick CLI bridge, or the `mcp-cli` which can run locally against Ollama.
 
-### Example: Using an MCP CLI client
+### Step-by-Step CLI Setup
 
-1.  Install an MCP CLI (e.g., if using a node-based MCP cli tool):
+1.  **Install the MCP CLI tool globally:**
     ```bash
-    npm install -g @modelcontextprotocol/cli
+    npm install -g @modelcontextprotocol/client-cli
+    ```
+    *Alternatively, you can use `npx @modelcontextprotocol/client-cli`.*
+
+2.  **Create an MCP Client Configuration File:**
+    Create a file named `mcp-config.json` in your project root. This file tells the CLI how to connect to Ollama and how to start your `server.py`.
+
+    ```json
+    {
+      "mcpServers": {
+        "api-guard-server": {
+          "command": "python",
+          "args": ["server.py"],
+          "env": {
+            "JAVA_PATH": "java",
+            "JAVAFX_LIB_PATH": "/path/to/javafx-sdk/lib",
+            "API_GUARD_JAR_PATH": "dependency_analyzers/java/api_guard/target/api_guard-1.0-SNAPSHOT.jar",
+            "PROJECTS_PATH": "/path/to/microservices/directory"
+          }
+        }
+      }
+    }
+    ```
+    *(Make sure to update the environment variables in this JSON block to match your actual local paths).*
+
+3.  **Start the CLI Bridge:**
+    Run the CLI client, pointing it to your local Ollama instance and specifying the model you pulled (e.g., `llama3.2`):
+    ```bash
+    mcp-cli --config mcp-config.json --model ollama:llama3.2 --ollama-url http://localhost:11434
     ```
 
-2.  Connect the CLI to the running `server.py` and pass Ollama as the model provider:
-    *Note: The exact command depends on the specific MCP client implementation. The client will handle routing tools from `server.py` to Ollama's `llama3.2` model.*
+    Once the CLI bridge is running, it will read your configuration, launch `server.py` as a subprocess, discover the tools (`list_services`, `get_service_details`, `find_incoming_calls`), and present a chat prompt where the `llama3.2` model can invoke them!
 
 ## 3. Pull the llama3.2 Model
 
