@@ -1,50 +1,63 @@
 import { useState } from 'react';
 import './App.css';
 
+class ChatRequest {
+  constructor(model, messages, stream = false) {
+    this.model = model;
+    this.messages = messages;
+    this.stream = stream;
+  }
+}
+
+class ChatMessage {
+  constructor(role, content) {
+    this.role = role;
+    this.content = content;
+  }
+}
+
 function App() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const handleChatRequest = async (currentMessages) => {
+    // We send requests to the proxy endpoint (/api/chat) which routes to the HTTP bridge
+    const requestPayload = new ChatRequest('qwen3:0.6b', currentMessages);
+
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestPayload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
 
-    const userMessage = { role: 'user', content: input };
-    setMessages((prev) => [...prev, userMessage]);
+    const userMessage = new ChatMessage('user', input);
+    let currentConversation = [...messages, userMessage];
+    setMessages(currentConversation);
     setInput('');
     setIsLoading(true);
 
     try {
-      // Direct requests to the HTTP MCP bridge (e.g. LiteLLM/ollama-mcp-bridge) via Vite Proxy
-      const response = await fetch('/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer ollama', // Required by OpenAI format, ignored by bridge
-        },
-        body: JSON.stringify({
-          model: 'llama3.2',
-          messages: [...messages, userMessage],
-          stream: false,
-        }),
-      });
+      const data = await handleChatRequest(currentConversation);
+      const responseMessage = data.message || { role: 'assistant', content: 'No response received' };
+      setMessages((prev) => [...prev, responseMessage]);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const assistantMessage = data.choices[0].message;
-      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Error connecting to the bridge:', error);
+      console.error('Error connecting to bridge:', error);
       setMessages((prev) => [
         ...prev,
-        {
-          role: 'assistant',
-          content: 'Error: Could not connect to the MCP bridge. Make sure the HTTP bridge (e.g., LiteLLM) is running locally on port 8000.',
-        },
+        new ChatMessage('assistant', 'Error: Could not connect to the bridge. Make sure the MCP bridge is running on port 8000.'),
       ]);
     } finally {
       setIsLoading(false);
@@ -55,7 +68,7 @@ function App() {
     <div className="app-container">
       <header className="app-header">
         <h1>Ollama Local Chat</h1>
-        <p>Model: llama3.2</p>
+        <p>Model: qwen3:0.6b</p>
       </header>
 
       <main className="chat-container">
@@ -63,11 +76,23 @@ function App() {
           {messages.length === 0 && (
             <div className="empty-state">Start a conversation with Ollama!</div>
           )}
-          {messages.map((msg, index) => (
-            <div key={index} className={`message ${msg.role}`}>
-              <div className="message-content">{msg.content}</div>
-            </div>
-          ))}
+          {messages.map((msg, index) => {
+             // Hide raw tool execution messages from the UI for a cleaner chat experience
+             if (msg.role === 'tool') return null;
+             if (msg.tool_calls) {
+               return (
+                 <div key={index} className="message assistant loading">
+                   <div className="message-content">Calling tool: {msg.tool_calls.map(tc => tc.function.name).join(", ")}...</div>
+                 </div>
+               );
+             }
+
+             return (
+              <div key={index} className={`message ${msg.role}`}>
+                <div className="message-content">{msg.content}</div>
+              </div>
+            );
+          })}
           {isLoading && (
             <div className="message assistant loading">
               <div className="message-content">Thinking...</div>
