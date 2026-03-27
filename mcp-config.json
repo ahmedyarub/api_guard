@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "api-guard-server": {
+      "command": "c:\\Python313\\python.exe",
+      "args": ["server.py"],
+      "env": {
+        "JAVA_PATH": "C:/Users/FiFo/.jdks/corretto-25.0.2/bin/java.exe",
+        "JAVAFX_LIB_PATH": "e:/javafx-sdk-26/lib",
+        "API_GUARD_JAR_PATH": "E:/java/api_guard/dependency_analyzers/java/api_guard/target/api_guard-1.0-SNAPSHOT.jar",
+        "PROJECTS_PATH": "e:/distributed-app/microservices/"
+      }
+    }
+  }
+}
