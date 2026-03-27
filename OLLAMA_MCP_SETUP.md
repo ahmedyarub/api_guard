@@ -38,48 +38,43 @@ python server.py
 ```
 *Note: Ensure `mcp` is installed (`pip install mcp`).*
 
-## 2. Configure Ollama with an MCP CLI Bridge
+## 2. Configure Ollama with an MCP HTTP Bridge
 
-Ollama itself does not natively act as an MCP Client. To bridge Ollama with the MCP Server (`server.py`) so it can use the tools (like `list_services`), you need an intermediary CLI tool that handles the LLM function-calling routing.
+Ollama itself does not natively resolve MCP tools directly via its REST API. To bridge Ollama with the MCP Server (`server.py`), so that applications like React or Python scripts can access Ollama *with* tool capabilities, you must run an HTTP proxy or bridge (such as an OpenAI-compatible API bridge like `liteLLM` or a dedicated `ollama-mcp-bridge`).
 
-We will use the official `@modelcontextprotocol/inspector` as a quick CLI bridge, or the `mcp-cli` which can run locally against Ollama.
+This bridge listens for incoming API requests (e.g., from the React app), coordinates tool execution between the local `server.py` over SSE, and proxies generation back and forth with the underlying Ollama instance.
 
-### Step-by-Step CLI Setup
+### Step-by-Step Bridge Setup
 
-1.  **Install the MCP CLI tool globally:**
+1.  **Install an MCP HTTP Bridge:**
+    Install a bridge tool compatible with your environment. For example, if using an `ollama-mcp-bridge` or `litellm`:
     ```bash
-    npm install -g @modelcontextprotocol/client-cli
+    pip install litellm mcp
     ```
-    *Alternatively, you can use `npx @modelcontextprotocol/client-cli`.*
 
 2.  **Create an MCP Client Configuration File:**
-    Create a file named `mcp-config.json` in your project root. This file tells the CLI how to connect to Ollama and how to start your `server.py`.
+    A file named `mcp-config.json` is provided in the root directory. It tells the bridge how to connect to your `server.py` MCP server (which is configured to run via SSE on port 8001).
 
     ```json
     {
       "mcpServers": {
         "api-guard-server": {
-          "command": "python",
-          "args": ["server.py"],
-          "env": {
-            "JAVA_PATH": "java",
-            "JAVAFX_LIB_PATH": "/path/to/javafx-sdk/lib",
-            "API_GUARD_JAR_PATH": "dependency_analyzers/java/api_guard/target/api_guard-1.0-SNAPSHOT.jar",
-            "PROJECTS_PATH": "/path/to/microservices/directory"
-          }
+          "url": "http://localhost:8001/sse"
         }
       }
     }
     ```
-    *(Make sure to update the environment variables in this JSON block to match your actual local paths).*
 
-3.  **Start the CLI Bridge:**
-    Run the CLI client, pointing it to your local Ollama instance and specifying the model you pulled (e.g., `llama3.2`):
+3.  **Start the Bridge Server:**
+    Make sure your `server.py` is running in one terminal (listening on port 8001).
+    In a new terminal, start your bridge so it proxies requests to Ollama and exposes an OpenAI-compatible API on port 8000.
+
+    *(Example using litellm with MCP config)*
     ```bash
-    mcp-cli --config mcp-config.json --model ollama:llama3.2 --ollama-url http://localhost:11434
+    litellm --model ollama_chat/llama3.2 --port 8000 --mcp_config mcp-config.json
     ```
 
-    Once the CLI bridge is running, it will read your configuration, launch `server.py` as a subprocess, discover the tools (`list_services`, `get_service_details`, `find_incoming_calls`), and present a chat prompt where the `llama3.2` model can invoke them!
+    The bridge is now listening on `http://localhost:8000`. Applications should target this URL rather than hitting Ollama directly.
 
 ## 3. Pull the llama3.2 Model
 
@@ -90,31 +85,7 @@ ollama run llama3.2
 ```
 (You can type `/bye` to exit the interactive prompt).
 
-## 4. Allow CORS in Ollama (Crucial for React Client)
-
-By default, Ollama blocks cross-origin requests. Since the React app runs on a different port (usually 5173), you must configure Ollama to allow it.
-
-Set the `OLLAMA_ORIGINS` environment variable before starting Ollama:
-
-*   **Linux/macOS:**
-    ```bash
-    OLLAMA_ORIGINS="*" ollama serve
-    ```
-    *Or, add it to your service file (e.g., `systemd`) if running in the background.*
-
-*   **Windows (Command Prompt):**
-    ```cmd
-    set OLLAMA_ORIGINS="*"
-    ollama serve
-    ```
-
-*   **Windows (PowerShell):**
-    ```powershell
-    $env:OLLAMA_ORIGINS="*"
-    ollama serve
-    ```
-
-## 5. Run the React Client
+## 4. Run the React Client
 
 Navigate to the React application directory, install dependencies, and start the development server.
 
@@ -124,13 +95,6 @@ npm install
 npm run dev
 ```
 
-Open your browser to the URL provided by Vite (usually `http://localhost:5173`).
+Open your browser to the URL provided by Vite (usually `http://localhost:5173`). The Vite development server is configured to proxy requests to your HTTP Bridge running on port 8000, avoiding CORS issues and correctly routing the requests.
 
-You can now chat with Ollama.
-
-**Important Note on React Client and MCP:**
-The basic React client currently communicates *directly* with Ollama's REST API (`/api/chat`).
-If you want the React client to trigger MCP tools, the architecture needs to change:
-1.  The React client sends a message to an intermediary Node.js or Python backend.
-2.  The backend acts as the MCP Client, connects to `server.py`, and queries Ollama (passing the available tools).
-3.  The backend returns the final response to the React client.
+You can now chat with Ollama, and it will be able to invoke the Java analyzer MCP tools!

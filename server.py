@@ -133,4 +133,8 @@ if __name__ == "__main__":
             f"--path={projects_path}"
         ]
     )
-    mcp.run()
+
+    # Run the MCP server over SSE (Server-Sent Events) on a specific port
+    port = int(os.environ.get("MCP_PORT", 8001))
+    print(f"Starting MCP server on http://localhost:{port}/sse")
+    mcp.run(transport="sse", port=port)

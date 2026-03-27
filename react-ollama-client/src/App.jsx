@@ -16,10 +16,12 @@ function App() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:11434/api/chat', {
+      // Direct requests to the HTTP MCP bridge (e.g. LiteLLM/ollama-mcp-bridge) via Vite Proxy
+      const response = await fetch('/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': 'Bearer ollama', // Required by OpenAI format, ignored by bridge
         },
         body: JSON.stringify({
           model: 'llama3.2',
@@ -33,14 +35,15 @@ function App() {
       }
 
       const data = await response.json();
-      setMessages((prev) => [...prev, data.message]);
+      const assistantMessage = data.choices[0].message;
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
-      console.error('Error connecting to Ollama:', error);
+      console.error('Error connecting to the bridge:', error);
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: 'Error: Could not connect to Ollama. Make sure it is running locally on port 11434 and the llama3.2 model is installed.',
+          content: 'Error: Could not connect to the MCP bridge. Make sure the HTTP bridge (e.g., LiteLLM) is running locally on port 8000.',
         },
       ]);
     } finally {
