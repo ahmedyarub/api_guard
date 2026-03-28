@@ -25,17 +25,10 @@ DATA = []
 # --- 3. Define Tools (Functions the LLM can use) ---
 
 @mcp.tool()
-def list_services() -> str:
-    """Returns a complete list of all microservice artifact IDs."""
-
-    services = [service["artifactId"] for service in DATA]
-
-    if not services:
-        return "No services found."
-
-    formatted_list = "\n- ".join(services)
-
-    return f"Found {len(services)} services:\n- {formatted_list}"
+def list_services() -> List[str]:
+    """Returns a list of all microservice artifact IDs in the system."""
+    print("list_services")
+    return [service["artifactId"] for service in DATA]
 
 
 @mcp.tool()
