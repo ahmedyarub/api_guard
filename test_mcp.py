@@ -9,7 +9,7 @@ payload = {
     "messages": [
         {
             "role": "user",
-            "content": "List the services"
+            "content": "List all the services"
         }
     ],
     "stream": False
