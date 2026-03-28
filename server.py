@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import platform
+import shutil
 import subprocess
 from typing import Dict, Any
 from typing import List
@@ -14,7 +15,8 @@ logging.basicConfig(
 )
 
 # 1. Initialize the Server
-mcp = FastMCP("Microservice-Graph")
+port = int(os.environ.get("MCP_PORT", 8001))
+mcp = FastMCP(name="Microservice-Graph", port=port)
 
 # 2. Your Data (In a real app, load this from your analysis output file)
 DATA = []
@@ -23,14 +25,23 @@ DATA = []
 # --- 3. Define Tools (Functions the LLM can use) ---
 
 @mcp.tool()
-def list_services() -> List[str]:
-    """Returns a list of all microservice artifact IDs in the system."""
-    return [service["artifactId"] for service in DATA]
+def list_services() -> str:
+    """Returns a complete list of all microservice artifact IDs."""
+
+    services = [service["artifactId"] for service in DATA]
+
+    if not services:
+        return "No services found."
+
+    formatted_list = "\n- ".join(services)
+
+    return f"Found {len(services)} services:\n- {formatted_list}"
 
 
 @mcp.tool()
 def get_service_details(artifact_id: str) -> str:
     """Get full details (endpoints, consumers) for a specific service by its artifactId."""
+    print("get_service_details")
     for service in DATA:
         if service["artifactId"] == artifact_id:
             return json.dumps(service, indent=2)
@@ -40,6 +51,7 @@ def get_service_details(artifact_id: str) -> str:
 @mcp.tool()
 def find_incoming_calls(target_service: str) -> List[str]:
     """Finds which services call the target_service."""
+    print("find_incoming_calls")
     callers = []
     for service in DATA:
         # Check links in every service to see if they point to the target
@@ -76,9 +88,14 @@ def run_executable(executable_path: str, args: list) -> Dict[str, Any]:
     if platform.system() == "Windows" and not executable_path.endswith(".exe"):
         executable_path += ".exe"
 
-    # 2. Check if file exists before running to avoid vague errors
-    if not os.path.exists(executable_path):
+    # 2. Check if executable exists (handles both absolute paths and PATH-resolved commands)
+    resolved_path = shutil.which(executable_path)
+    if resolved_path is None and not os.path.exists(executable_path):
         raise FileNotFoundError(f"Executable not found at: {executable_path}")
+
+    # Use resolved path if available (for PATH commands like "java")
+    if resolved_path:
+        executable_path = resolved_path
 
     try:
         # 3. Run the process safely
@@ -104,17 +121,30 @@ def run_executable(executable_path: str, args: list) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
+    java_path = os.environ.get("JAVA_PATH", "java")
+    javafx_lib_path = os.environ.get("JAVAFX_LIB_PATH")
+    if not javafx_lib_path:
+        raise ValueError("JAVAFX_LIB_PATH environment variable is required.")
+
+    api_guard_jar_path = os.environ.get("API_GUARD_JAR_PATH", "dependency_analyzers/java/api_guard/target/api_guard-1.0-SNAPSHOT.jar")
+    projects_path = os.environ.get("PROJECTS_PATH")
+    if not projects_path:
+        raise ValueError("PROJECTS_PATH environment variable is required.")
+
     DATA = run_executable(
-        r"C:\Users\FiFo\.jdks\corretto-25.0.1\bin\java.exe",
+        java_path,
         [
             "--module-path",
-            "E:/javafx-sdk-26/lib",
+            javafx_lib_path,
             "--add-modules",
             "javafx.controls",
             "-jar",
-            r"E:\java\api_guard\dependency_analyzers\java\api_guard\target\api_guard-1.0-SNAPSHOT.jar",
+            api_guard_jar_path,
             "--cli",
-            "--path=E:/java/multi-micro/microservices/"
+            f"--path={projects_path}"
         ]
     )
-    mcp.run()
+
+    # Run the MCP server over SSE (Server-Sent Events) on a specific port
+    print(f"Starting MCP server on http://localhost:{port}/sse")
+    mcp.run(transport="sse")
