@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "api-guard-server": {
+      "url": "http://localhost:8001/sse"
+    }
+  }
+}

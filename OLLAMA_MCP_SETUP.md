@@ -14,10 +14,11 @@ This document outlines the architecture and setup instructions for connecting a 
 ## Prerequisites
 
 1.  **Ollama**: Install [Ollama](https://ollama.com/) locally.
-2.  **Node.js**: Install Node.js (v18+) and npm.
-3.  **Python**: Install Python 3.10+ and `pip` (ensure `mcp` is installed).
-4.  **Java/JavaFX**: Install JDK 21+ and JavaFX SDK as required by the `api_guard` project.
-5.  **`api_guard` jar**: Build the `api_guard` jar file.
+2.  **ollama-mcp-bridge**: install [ollama-mcp-bridge](https://github.com/jonigl/ollama-mcp-bridge?tab=readme-ov-file#installation) locally.
+3.  **Node.js**: Install Node.js (v18+) and npm.
+4.  **Python**: Install Python 3.10+ and `pip` (ensure `mcp` is installed).
+5.  **Java/JavaFX**: Install JDK 21+ and JavaFX SDK as required by the `api_guard` project.
+6.  **`api_guard` jar**: Build the `api_guard` jar file.
 
 ## 1. Start the MCP Server (`server.py`)
 
@@ -49,9 +50,11 @@ ollama run qwen3:0.6b
 
 ## 3. Start the MCP HTTP Bridge
 
-The HTTP bridge sits between the frontend, Ollama, and `server.py`. Ensure your bridge (such as an `ollama-mcp-bridge` or `litellm` configured with the MCP context) is running and listening on port 8000, and is configured to talk to `http://localhost:8001/sse`.
+The HTTP bridge sits between the frontend, Ollama, and `server.py`. Ensure your bridge (`ollama-mcp-bridge` configured with the MCP context) is running and listening on port 8000, and is configured to talk to `http://localhost:8001/sse`.
 
-*(The exact startup command will depend on your specific bridge implementation, but it should listen for standard Ollama `/api/chat` payloads).*
+```bash
+ollama-mcp-bridge --config mcp-config.json
+```
 
 ## 4. Run the React Client
 

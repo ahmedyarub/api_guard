@@ -15,7 +15,8 @@ logging.basicConfig(
 )
 
 # 1. Initialize the Server
-mcp = FastMCP("Microservice-Graph")
+port = int(os.environ.get("MCP_PORT", 8001))
+mcp = FastMCP(name="Microservice-Graph", port=port)
 
 # 2. Your Data (In a real app, load this from your analysis output file)
 DATA = []
@@ -26,12 +27,14 @@ DATA = []
 @mcp.tool()
 def list_services() -> List[str]:
     """Returns a list of all microservice artifact IDs in the system."""
+    print("list_services")
     return [service["artifactId"] for service in DATA]
 
 
 @mcp.tool()
 def get_service_details(artifact_id: str) -> str:
     """Get full details (endpoints, consumers) for a specific service by its artifactId."""
+    print("get_service_details")
     for service in DATA:
         if service["artifactId"] == artifact_id:
             return json.dumps(service, indent=2)
@@ -41,6 +44,7 @@ def get_service_details(artifact_id: str) -> str:
 @mcp.tool()
 def find_incoming_calls(target_service: str) -> List[str]:
     """Finds which services call the target_service."""
+    print("find_incoming_calls")
     callers = []
     for service in DATA:
         # Check links in every service to see if they point to the target
@@ -133,4 +137,7 @@ if __name__ == "__main__":
             f"--path={projects_path}"
         ]
     )
-    mcp.run()
+
+    # Run the MCP server over SSE (Server-Sent Events) on a specific port
+    print(f"Starting MCP server on http://localhost:{port}/sse")
+    mcp.run(transport="sse")
