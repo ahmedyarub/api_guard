@@ -8,25 +8,25 @@ This document describes the high-level architecture of the complete API Guard ec
 flowchart TD
     %% User and UI
     User(("👤 User"))
-    ReactApp["⚛️ React Client\n(Vite, port 5173)"]
+    ReactApp["⚛️ React Client (Vite, port 5173)"]
 
     %% AI Components
-    Ollama["🦙 Ollama\n(Local LLM: qwen3:0.6b,\nport 11434)"]
-    Bridge["🌉 MCP HTTP Bridge\n(e.g., ollama-mcp-bridge,\nport 8000)"]
-    MCPServer["🐍 MCP Server\n(server.py FastMCP, port 8001,\nSSE Transport)"]
+    Ollama["🦙 Ollama (Local LLM: qwen3:0.6b, port 11434)"]
+    Bridge["🌉 MCP HTTP Bridge (e.g., ollama-mcp-bridge, port 8000)"]
+    MCPServer["🐍 MCP Server (server.py FastMCP, port 8001, SSE Transport)"]
 
     %% Core Analyzers
-    JavaAnalyzer["☕ Java Analyzer\n(Spring Boot Scanner/Linker)"]
-    CppCLI["⚙️ C++ CLI\n(Orchestrator/Adapter)"]
-    CodeQL[("💾 CodeQL DB\n(Static Analysis)")]
-    SourceCode["📁 Microservices\n(Source Code)"]
+    JavaAnalyzer["☕ Java Analyzer (Spring Boot Scanner/Linker)"]
+    CppCLI["⚙️ C++ CLI (Orchestrator/Adapter)"]
+    CodeQL[("💾 CodeQL DB (Static Analysis)")]
+    SourceCode["📁 Microservices (Source Code)"]
 
     %% Relationships
     User <-->|Chats / Selects Models| ReactApp
 
     %% Frontend Proxy flows
-    ReactApp -->|"/api/tags" (Fetch models)| Ollama
-    ReactApp -->|"/api/chat" (Proxy)| Bridge
+    ReactApp -->|"/api/tags (Fetch models)"| Ollama
+    ReactApp -->|"/api/chat (Proxy)"| Bridge
 
     %% AI Bridge execution loop
     Bridge <-->|Generates prompts / Receives tool calls| Ollama
