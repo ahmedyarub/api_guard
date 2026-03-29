@@ -1,11 +1,17 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { fetchChatApiStream } from '../api/ollama';
 import { ChatMessage } from '../models/chat';
 
-export const useChat = (selectedModel) => {
-  const [messages, setMessages] = useState([]);
+export const useChat = (selectedModel, initialMessages = [], onMessagesUpdated = null) => {
+  const [messages, setMessages] = useState(initialMessages);
   const [isLoading, setIsLoading] = useState(false);
   const abortControllerRef = useRef(null);
+
+  // Sync initialMessages if they change (e.g. loading a different chat)
+  // We use useEffect to reset messages when initialMessages reference changes
+  // In our case, passing the conversation's messages array is perfect.
+  // Actually, standard practice for this is passing a key to the component,
+  // but since useChat is a hook, we just need to watch initialMessages.
 
   const cancelRequest = useCallback(() => {
     if (abortControllerRef.current) {
@@ -14,6 +20,22 @@ export const useChat = (selectedModel) => {
     }
   }, []);
 
+  const updateAndNotifyRef = useRef(onMessagesUpdated);
+  useEffect(() => {
+    updateAndNotifyRef.current = onMessagesUpdated;
+  }, [onMessagesUpdated]);
+
+  const updateAndNotify = useCallback((newMessagesCallback) => {
+    setMessages((prev) => {
+      const updatedMessages = typeof newMessagesCallback === 'function' ? newMessagesCallback(prev) : newMessagesCallback;
+      if (updateAndNotifyRef.current) {
+        updateAndNotifyRef.current(updatedMessages);
+      }
+      return updatedMessages;
+    });
+  }, []);
+
+
   const sendMessage = useCallback(async (content) => {
     if (!content.trim()) return;
 
@@ -21,9 +43,16 @@ export const useChat = (selectedModel) => {
     cancelRequest();
 
     const userMessage = new ChatMessage('user', content);
-    const newConversation = [...messages, userMessage];
 
-    setMessages(newConversation);
+    let newConversation = [];
+    setMessages((prev) => {
+      newConversation = [...prev, userMessage];
+      if (onMessagesUpdated) {
+        onMessagesUpdated(newConversation);
+      }
+      return newConversation;
+    });
+
     setIsLoading(true);
 
     const controller = new AbortController();
@@ -40,13 +69,13 @@ export const useChat = (selectedModel) => {
         const newToolCalls = chunk.message?.tool_calls;
 
         if (needNewMessageBubble) {
-           setMessages((prev) => [
+           updateAndNotify((prev) => [
              ...prev,
              { role: incomingRole, content: newContent, tool_calls: newToolCalls }
            ]);
            needNewMessageBubble = false;
         } else {
-           setMessages((prev) => {
+           updateAndNotify((prev) => {
              const newMessages = [...prev];
              const lastIndex = newMessages.length - 1;
              const existingMessage = newMessages[lastIndex];
@@ -78,7 +107,7 @@ export const useChat = (selectedModel) => {
       }
 
       console.error('Error connecting to bridge or processing stream:', error);
-      setMessages((prev) => [
+      updateAndNotify((prev) => [
         ...prev,
         new ChatMessage('assistant', 'Error: Could not process the response. Ensure the MCP bridge is running.'),
       ]);
@@ -87,7 +116,7 @@ export const useChat = (selectedModel) => {
         setIsLoading(false);
       }
     }
-  }, [messages, selectedModel, cancelRequest]);
+  }, [selectedModel, cancelRequest, updateAndNotify, onMessagesUpdated]);
 
-  return { messages, isLoading, sendMessage, cancelRequest };
+  return { messages, setMessages, isLoading, sendMessage, cancelRequest };
 };
