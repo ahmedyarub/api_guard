@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react';
-import { fetchChatApi } from '../api/ollama';
+import { fetchChatApiStream } from '../api/ollama';
 import { ChatMessage } from '../models/chat';
 
 export const useChat = (selectedModel) => {
@@ -30,20 +30,58 @@ export const useChat = (selectedModel) => {
     abortControllerRef.current = controller;
 
     try {
-      const data = await fetchChatApi(selectedModel, newConversation, controller.signal);
+      const stream = fetchChatApiStream(selectedModel, newConversation, controller.signal);
 
-      const responseMessage = data.message || new ChatMessage('assistant', 'No response received');
-      setMessages((prev) => [...prev, responseMessage]);
+      let initializedAssistantMessage = false;
+
+      for await (const chunk of stream) {
+        if (!initializedAssistantMessage) {
+           // We've received the first chunk. Let's add an empty assistant message to the list
+           // and then we will update it incrementally.
+           setMessages((prev) => [
+             ...prev,
+             new ChatMessage('assistant', chunk.message?.content || '')
+           ]);
+           initializedAssistantMessage = true;
+        } else {
+           // Update the last message in the array
+           setMessages((prev) => {
+             const newMessages = [...prev];
+             const lastIndex = newMessages.length - 1;
+
+             // Tool calls or updates usually don't have 'content' immediately, or append content incrementally
+             const newContent = chunk.message?.content || '';
+             const newToolCalls = chunk.message?.tool_calls;
+
+             const existingMessage = newMessages[lastIndex];
+
+             newMessages[lastIndex] = {
+               ...existingMessage,
+               content: existingMessage.content + newContent,
+               // Overwrite tool calls if they exist, or keep existing ones
+               ...(newToolCalls ? { tool_calls: newToolCalls } : {})
+             };
+
+             return newMessages;
+           });
+        }
+      }
+
+      // If stream finishes without ever yielding a message:
+      if (!initializedAssistantMessage) {
+        setMessages((prev) => [...prev, new ChatMessage('assistant', 'No response received')]);
+      }
+
     } catch (error) {
       if (error.name === 'AbortError') {
         console.log('Request cancelled');
-        return; // Don't add an error message if the user intentionally cancelled
+        return;
       }
 
-      console.error('Error connecting to bridge:', error);
+      console.error('Error connecting to bridge or processing stream:', error);
       setMessages((prev) => [
         ...prev,
-        new ChatMessage('assistant', 'Error: Could not connect to the bridge. Make sure the MCP bridge is running on port 8000.'),
+        new ChatMessage('assistant', 'Error: Could not process the response. Ensure the MCP bridge is running.'),
       ]);
     } finally {
       if (abortControllerRef.current === controller) {
