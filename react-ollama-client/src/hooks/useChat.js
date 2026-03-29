@@ -32,27 +32,23 @@ export const useChat = (selectedModel) => {
     try {
       const stream = fetchChatApiStream(selectedModel, newConversation, controller.signal);
 
-      let initializedAssistantMessage = false;
+      let needNewMessageBubble = true;
 
       for await (const chunk of stream) {
-        if (!initializedAssistantMessage) {
-           // We've received the first chunk. Let's add an empty assistant message to the list
-           // and then we will update it incrementally.
+        const incomingRole = chunk.message?.role || 'assistant';
+        const newContent = chunk.message?.content || '';
+        const newToolCalls = chunk.message?.tool_calls;
+
+        if (needNewMessageBubble) {
            setMessages((prev) => [
              ...prev,
-             new ChatMessage('assistant', chunk.message?.content || '')
+             { role: incomingRole, content: newContent, tool_calls: newToolCalls }
            ]);
-           initializedAssistantMessage = true;
+           needNewMessageBubble = false;
         } else {
-           // Update the last message in the array
            setMessages((prev) => {
              const newMessages = [...prev];
              const lastIndex = newMessages.length - 1;
-
-             // Tool calls or updates usually don't have 'content' immediately, or append content incrementally
-             const newContent = chunk.message?.content || '';
-             const newToolCalls = chunk.message?.tool_calls;
-
              const existingMessage = newMessages[lastIndex];
 
              newMessages[lastIndex] = {
@@ -65,11 +61,14 @@ export const useChat = (selectedModel) => {
              return newMessages;
            });
         }
-      }
 
-      // If stream finishes without ever yielding a message:
-      if (!initializedAssistantMessage) {
-        setMessages((prev) => [...prev, new ChatMessage('assistant', 'No response received')]);
+        // If the chunk says 'done: true', the stream for the current turn is over.
+        // But some bridges (like Ollama's) stream tools, then say 'done', then stream the follow-up
+        // answer in the same overarching connection. If another chunk comes after a 'done',
+        // it should start a new message bubble.
+        if (chunk.done) {
+          needNewMessageBubble = true;
+        }
       }
 
     } catch (error) {
