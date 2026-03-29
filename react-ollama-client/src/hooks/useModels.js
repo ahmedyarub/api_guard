@@ -10,18 +10,16 @@ export const useModels = () => {
 
   useEffect(() => {
     let isMounted = true; // Avoid setting state if component unmounts during fetch
-    const savedModel = localStorage.getItem(MODEL_STORAGE_KEY);
-
-    if (savedModel) {
-      setSelectedModel(savedModel);
-    }
 
     const fetchModels = async () => {
+      const savedModel = localStorage.getItem(MODEL_STORAGE_KEY);
       try {
         const data = await fetchModelsApi();
         if (isMounted) {
           setModels(data.models || []);
-          if (!savedModel && data.models && data.models.length > 0) {
+          if (savedModel) {
+            setSelectedModel(savedModel);
+          } else if (data.models && data.models.length > 0) {
             const defaultModel = data.models[0].name;
             setSelectedModel(defaultModel);
             localStorage.setItem(MODEL_STORAGE_KEY, defaultModel);
