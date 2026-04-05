@@ -69,3 +69,5 @@ npm run dev
 Open your browser to the URL provided by Vite (usually `http://localhost:5173`).
 
 The Vite development server is configured to proxy all `/api` requests to `http://127.0.0.1:8000`, routing your chat messages straight into the bridge without encountering CORS issues.
+
+![react.png](react.png)

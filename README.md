@@ -3,6 +3,8 @@
 
 Cross-domain static analysis for Java microservices. API Guard discovers REST endpoints and client calls across Spring Boot services, links them into a dependency graph, and enables [CodeQL](https://codeql.github.com/) to analyze vulnerabilities that span service boundaries.
 
+![react.png](react.png)
+
 ## How It Works
 
 1. **Scan** - The Java analyzer parses Spring Boot projects to extract REST producers (`@RestController`, `RouterFunction`) and consumers (`FeignClient`, `RestTemplate`, `WebClient`).
